@@ -1,0 +1,19 @@
+---
+title: "index"
+format: html
+editor: visual
+---
+
+## Introduction
+
+Clear, compelling framing of the phenomenon, research question, and why it matters; variables and context are intelligible.
+
+## Methods
+
+Lucid account of data source, sample, variables, preparation, models, comparisons, diagnostics, and rationale for major decisions; sufficient detail without a code walkthrough
+
+Explain how data was originally cleaned
+
+## Results
+
+Prioritizes important findings, explains estimates and uncertainty in substantive terms, connects results to questions, and calibrates claims and limitations.
