@@ -1,15 +1,18 @@
 library(tidyverse)
 library(gt)
-library(readxl)
+library(openxlsx)
 library(dplyr)
+library(psych)
 library(performance)
 library(ggplot2)
 library(broom)
+library(lmtest)
+library(emmeans)
 library(ggeffects)
 library(sandwich)
 
 # Loading dataset
-my_data <- read_excel("Dataset.xlsx", sheet = 1)
+my_data <- read.xlsx("https://raw.githubusercontent.com/agraha89/graham-capstone/main/Dataset.xlsx", sheet = 1)
 
 # Examining content and structure of dataset
 head(my_data)
@@ -111,11 +114,9 @@ SA_Distribution <- ggplot(allscores.df, aes(x = Safety_Anxiety)) +
     panel.grid.minor = element_blank(),
     axis.line = element_line(color = "black", linewidth = 0.5))
 
-N <- nrow(demographics_and_scores.df) # Creating an object to capture sample size
-
 # Creating demographics dataframe
 demographics.df <- my_data |> 
-  select(Religiosity, `Political Orientation`, Age, `LGBTQ2S+ Identity`)
+  select(Religiosity, Political.Orientation, Age, `LGBTQ2S+.Identity`)
 
 # Examining distributions
 Rel_Distribution <- ggplot(demographics.df, aes(x = Religiosity)) +
@@ -135,7 +136,7 @@ Rel_Distribution <- ggplot(demographics.df, aes(x = Religiosity)) +
         panel.grid.minor = element_blank(),
         axis.line = element_line(color = "black", linewidth = 0.5))
 
-PO_Distribution <- ggplot(demographics.df, aes(x = `Political Orientation`)) +
+PO_Distribution <- ggplot(demographics.df, aes(x = Political.Orientation)) +
   geom_histogram(
     aes(y = after_stat(density)),
     bins = 7,
@@ -168,7 +169,7 @@ Age_Distribution <- ggplot(demographics.df, aes(x = Age)) +
         panel.grid.minor = element_blank(),
         axis.line = element_line(color = "black", linewidth = 0.5))
 
-LGBTQ2S_Distribution <- ggplot(demographics.df, aes(x = `LGBTQ2S+ Identity`)) +
+LGBTQ2S_Distribution <- ggplot(demographics.df, aes(x = `LGBTQ2S+.Identity`)) +
   geom_histogram(
     bins = 2,
     fill = "#669BBC",
@@ -188,10 +189,12 @@ LGBTQ2S_Distribution <- ggplot(demographics.df, aes(x = `LGBTQ2S+ Identity`)) +
 # Combining demographics with scores (for those interested in only the composite scale scores alongside the demographics)
 demographics_and_scores.df <- cbind(allscores.df, demographics.df)
 
+N <- nrow(allscores.df) # Creating an object to capture sample size
+
 # Creating new dataframe with descriptive stats for continuous demographic measures
 Demographics_Summary <- demographics.df |> 
   select(Religiosity,
-         `Political Orientation`,
+         Political.Orientation,
          Age) |> 
   describe()
 
@@ -296,7 +299,7 @@ SO_by_BS_plot <- ggplot(allscores.df, aes(x = Sexual_Objectification_Experiences
   annotate("label",
            x = 4,
            y = 1,
-           label = "r(283) = .12, p = .043")
+           label = "r(283) = .12, p = .042")
 
 SO_by_PSA_plot <- ggplot(allscores.df, aes(x = Sexual_Objectification_Experiences, y = Safety_Anxiety)) +
   geom_point(alpha = 0.75) +
@@ -330,7 +333,7 @@ BS_by_PSA_plot <- ggplot(allscores.df, aes(x = Benevolent_Sexism, y = Safety_Anx
   annotate("label",
            x = 4,
            y = 2,
-           label = "r(283) = .06, p = .327")
+           label = "r(283) = .06, p = .302")
 
 ## Intercept-only Model
 mod0 <- lm(SA_c ~ 1, data = allscores.df)
@@ -492,13 +495,50 @@ coefci(mod3,
   vcov. = vcovHC(mod3, type = "HC3"),
   df = df.residual(mod3))
 coefci(mod3_sensitivity,
-       vcov. = vcovHC(mod3, type = "HC3"),
-       df = df.residual(mod3))
+       vcov. = vcovHC(mod3_sensitivity, type = "HC3"),
+       df = df.residual(mod3_sensitivity))
+
+# Reporting regression results for original model with HC3 SE estimate
+coefficient_results <- tidy(coeftest(mod3, vcov = vcovHC(mod3, type = "HC3")),
+                                        conf.int = TRUE,
+                                        conf.level = 0.95)
+
+coefficient_results |>
+  mutate(term = dplyr::recode(term,
+                              "(Intercept)" = "Intercept",
+                              "SO_c" = "Sexual Objectification Experience Frequency",
+                              "BS_c" = "Benevolent Sexism",
+                              "SO_c:BS_c" = "Sexual Objectification × Benevolent Sexism")) |>
+  select(term,
+         estimate,
+         std.error,
+         conf.low,
+         conf.high,
+         p.value) |>
+  gt() |>
+  cols_label(term = "Predictor",
+             estimate = "Estimate",
+             std.error = "SE",
+             conf.low = "95% CI lower",
+             conf.high = "95% CI upper",
+             p.value = "p") |>
+  fmt_number(columns = c(
+    estimate,
+    std.error,
+    conf.low,
+    conf.high),
+    decimals = 3) |>
+  fmt(columns = p.value,
+      fns = function(x) {
+        ifelse(
+          x < .001,
+          "< .001",
+          sprintf("%.3f", x))})
 
 # Reporting regression results for *sensitivity* model with HC3 SE estimate
-sensitivity_coefficient_results <- tidy(mod3_sensitivity,
-                            conf.int = TRUE,
-                            conf.level = 0.95)
+sensitivity_coefficient_results <- tidy(coeftest(mod3_sensitivity, vcov = vcovHC(mod3_sensitivity, type = "HC3")),
+                                        conf.int = TRUE,
+                                        conf.level = 0.95)
 
 sensitivity_coefficient_results |>
   mutate(term = dplyr::recode(term,
@@ -546,7 +586,7 @@ HC3_BS_trends <- emtrends(mod3,
                              vcov. = vcovHC(mod3, type = "HC3"))
 
 # Building a data frame of the simple slopes
-HC3_simple_slopes_df <- summary(BS_trends,
+HC3_simple_slopes_df <- summary(HC3_BS_trends,
   infer = c(TRUE, TRUE),
   null = 0) |> 
   as.data.frame() |>
@@ -554,7 +594,7 @@ HC3_simple_slopes_df <- summary(BS_trends,
   select(BS_level, SO_c.trend, SE, df, t.ratio, p.value, lower.CL, upper.CL)
 
 ## Turning the simple slopes dataframe into a table
-HC3_simple_slopes_table <- gt(simple_slopes_df) |> 
+HC3_simple_slopes_table <- gt(HC3_simple_slopes_df) |> 
   cols_label(BS_level = "Benevolent Sexism",
              SO_c.trend = "Estimate",
              lower.CL = "Lower 95% CI",
@@ -570,7 +610,7 @@ fmt_number(columns = c(SO_c.trend, SE, t.ratio, lower.CL, upper.CL), decimals = 
 
 # Generating predicted outcomes to prepare visualization
 HC3_predictions <- ggpredict(mod3,
-  terms = c("SO_c", paste0("BS_c [", -BS_sd, ", 0, ", BS_sd, "]")),
+  terms = c("SO_c", "BS_c [meansd]"), # Specifying the three levels of benevolent sexism
   vcov.fun = sandwich::vcovHC,
   vcov.type = "HC3")
 
@@ -631,7 +671,7 @@ Sensitivity_simple_slopes_table <- gt(Sensitivity_simple_slopes_df) |>
 
 # Generating predicted outcomes to prepare visualization
 Sensitivity_predictions <- ggpredict(mod3_sensitivity,
-                             terms = c("SO_c", paste0("BS_c [", -BS_sd, ", 0, ", BS_sd, "]")),
+                             terms = c("SO_c", "BS_c [meansd]"), # Specifying the three levels of benevolent sexism
                              vcov.fun = sandwich::vcovHC,
                              vcov.type = "HC3")
 
@@ -668,3 +708,5 @@ Sensitivity_plot <- ggplot(Sensitivity_predictions_df,
        colour = "Benevolent Sexism",
        fill = "Benevolent Sexism",
        title = "Simple Slopes of Sexual Objectification Frequency at Levels of Benevolent Sexism")
+
+

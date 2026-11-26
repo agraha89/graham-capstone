@@ -1,7 +1,19 @@
 ---
-title: "index"
-format: html
+title: "The Protection Paradox" 
+subtitle: "Benevolent Sexism Amplifies the Link Between Sexual Objectification and Personal Safety Anxiety"
+author: "Alana Graham"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    embed-resources: true
+    code-tools: true
+    code-fold: true
 editor: visual
+execute:
+  warning: false
+  message: false
+  echo: true
 ---
 
 ## Introduction
@@ -9,7 +21,69 @@ editor: visual
 Clear, compelling framing of the phenomenon, research question, and why it matters; variables and context are intelligible.
 
 ## Methods
+```{r} 
+#| echo: true
+#| output: false
+library(tidyverse)
+library(gt)
+library(openxlsx)
+library(dplyr)
+library(psych)
+library(performance)
+library(ggplot2)
+library(broom)
+library(lmtest)
+library(emmeans)
+library(ggeffects)
+library(sandwich)
+library(patchwork)
 
+# Loading dataset
+my_data <- read.xlsx("https://raw.githubusercontent.com/agraha89/graham-capstone/main/Dataset.xlsx", sheet = 1)
+
+#### Scoring Scales ####
+moderation_analysis.df <- my_data
+v_keys <- list(
+  Sexual_Objectification_Experiences = c("SO1", "SO2", "SO3", "SO4", "SO5", "SO6", "SO7", "SO8", "SO9", "SO10", "SO11"),
+  Benevolent_Sexism = c("BS1", "BS2", "BS3", "BS4", "BS5", "BS6"),
+  Safety_Anxiety = c("PSA1", "PSA2", "PSA3", "PSA4", "PSA5", "PSA6", "PSA7", "PSA8")) 
+
+# Scoring Sexual Objectification Experiences Scale
+SO_scores <- scoreItems(
+  v_keys["Sexual_Objectification_Experiences"],
+  moderation_analysis.df,
+  totals = F,
+  min = 1,
+  max = 5,
+  impute = "mean") # Using mean imputation to handle missing item values
+
+# Scoring Benevolent Sexism Subscale
+BS_scores <- scoreItems(
+  v_keys["Benevolent_Sexism"],
+  moderation_analysis.df,
+  totals = F,
+  min = 1,
+  max = 5,
+  impute = "mean")
+
+# Scoring Personal Safety Anxiety Scale
+PSA_scores <- scoreItems(
+  v_keys["Safety_Anxiety"],
+  moderation_analysis.df,
+  totals = F,
+  min = 1,
+  max = 7,
+  impute = "mean")
+
+# Creating and combining dataframes of scores
+SO_scores.df <- as.data.frame(SO_scores$scores)
+BS_scores.df <- as.data.frame(BS_scores$scores)
+PSA_scores.df <- as.data.frame(PSA_scores$scores)
+allscores.df <- cbind(SO_scores.df, BS_scores.df, PSA_scores.df) |> 
+  mutate(SO_c = Sexual_Objectification_Experiences - mean(Sexual_Objectification_Experiences),
+         BS_c = Benevolent_Sexism - mean(Benevolent_Sexism),
+         SA_c = Safety_Anxiety - mean(Safety_Anxiety))  # Centred AFTER dropping missing cases
+```
 Lucid account of data source, sample, variables, preparation, models, comparisons, diagnostics, and rationale for major decisions; sufficient detail without a code walkthrough
 
 Explain how data was originally cleaned
@@ -17,3 +91,652 @@ Explain how data was originally cleaned
 ## Results
 
 Prioritizes important findings, explains estimates and uncertainty in substantive terms, connects results to questions, and calibrates claims and limitations.
+
+
+```{r}
+# Creating demographics dataframe
+demographics.df <- my_data |> 
+  select(Religiosity, Political.Orientation, Age, `LGBTQ2S+.Identity`)
+
+# Examining distributions
+Rel_Distribution <- ggplot(demographics.df, aes(x = Religiosity)) +
+  geom_histogram(
+    bins = 7, # Note fewer bins due to limited response options (compared to outcomes scale measures' composite scores)
+    fill = "#669BBC",
+    color = "white",
+    alpha = 0.8,
+    na.rm = TRUE) +
+  geom_density(
+    aes(y = after_stat(count)),
+    linewidth = 0.9,
+    color = "#9A3038") +
+  labs(x = "Degree of Religiosity",
+       y = "Density") +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black", linewidth = 0.5))
+
+PO_Distribution <- ggplot(demographics.df, aes(x = Political.Orientation)) +
+  geom_histogram(
+    bins = 7,
+    fill = "#669BBC",
+    color = "white",
+    alpha = 0.8,
+    na.rm = TRUE) +
+  geom_density(
+    aes(y = after_stat(count)),
+    linewidth = 0.9,
+    color = "#9A3038") +
+  labs(x = "Political Orientation (Higher = Right-Leaning)",
+       y = "Density") +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black", linewidth = 0.5))
+
+Age_Distribution <- ggplot(demographics.df, aes(x = Age)) +
+  geom_histogram(
+    fill = "#669BBC",
+    bins = 20,
+    color = "white",
+    alpha = 0.8,
+    na.rm = TRUE) +
+  geom_density(
+    aes(y = after_stat(count)),
+    linewidth = 0.9,
+    color = "#9A3038") +
+  labs(x = "Age",
+       y = "Density") +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black", linewidth = 0.5))
+
+LGBTQ2S_Distribution <- ggplot(demographics.df, aes(x = `LGBTQ2S+.Identity`)) +
+  geom_histogram(
+    bins = 2,
+    fill = "#669BBC",
+    color = "white",
+    alpha = 0.8,
+    na.rm = TRUE) +
+  scale_x_continuous(
+    breaks = c(1, 0),
+    labels = c("LGBTQ2S+ Identity",
+               "Cisgender + Straight")) +
+  labs(x = "LGBTQ2S+ Identity",
+       y = "Density") +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black", linewidth = 0.5))
+
+N <- nrow(allscores.df) # Creating an object to capture sample size
+
+# Creating new dataframe with descriptive stats for continuous demographic measures
+Demographics_Summary <- demographics.df |> 
+  select(Religiosity,
+         Political.Orientation,
+         Age) |> 
+  describe()
+
+# Assigning labels to variables and selecting on relevant stats for the table
+Demographics_Summary <- Demographics_Summary |> 
+  mutate("Measure" = c(
+    "Religiosity",
+    "Political Orientation",
+    "Age")) |> # Creating new vector with measure names
+  select("Measure", mean, median, sd, min, max, skew)
+
+# Formatting gt table
+Demographics_Score_Table <- Demographics_Summary |> 
+  gt() |> 
+  fmt_number(
+    columns = c(mean, median, sd, min, max, skew),
+    decimals = 2) |> 
+  cols_label(mean = "Mean",
+             median = "Median",
+             sd = "SD",
+             min = "Minimum",
+             max = "Maximum",
+             skew = "Skewness") |> 
+  cols_align(
+    align = "right",
+    columns = c(mean, median, sd, min, max, skew)) |> 
+  tab_header(title = "Demographic Descriptive Statistics")
+
+Demographics_Score_Table
+
+# Creating patchwork of plots so they appear together
+((Rel_Distribution + PO_Distribution) / (Age_Distribution + LGBTQ2S_Distribution)) +
+  plot_annotation(title = "Frequency Distributions of Demographic Measures",
+                  theme = theme(plot.title = element_text(size = 20)))
+
+# Creating objects to capture the continuous demographic measures' means and SDs
+m_Rel <- round(Demographics_Summary$mean[1], 2)
+sd_Rel <- round(Demographics_Summary$sd[1], 2)
+m_PO <- round(Demographics_Summary$mean[2], 2) 
+sd_PO <- round(Demographics_Summary$sd[2], 2)
+m_Age <- round(Demographics_Summary$mean[3], 2)
+sd_Age <- round(Demographics_Summary$sd[3], 2)
+LGBTQ2S_Num <- sum(demographics.df$`LGBTQ2S+.Identity` == 1)
+LGBTQ2S_Proportion <- round(LGBTQ2S_Num / N * 100, 2)
+
+# Scale Descriptive Stats
+# Creating new dataframe with descriptive stats for continuous demographic measures
+Summary <- allscores.df |> 
+  select(Sexual_Objectification_Experiences, Benevolent_Sexism, Safety_Anxiety) |> 
+  describe()
+
+# Assigning labels to variables, calculating internal reliability coefficients, and selecting on relevant stats for the table
+Summary <- Summary |> 
+  mutate("Scale" = c(
+    "Sexual Objectification Experience Frequency",
+    "Benevolent Sexism",
+    "Personal Safety Anxiety and Vigilance")) |> 
+  mutate(alphas = round(c(SO_scores$alpha,
+                          BS_scores$alpha,
+                          PSA_scores$alpha), 2)) |> 
+  select("Scale", mean, median, sd, min, max, skew, alphas)
+
+# Formatting gt table
+Score_Table <- Summary |>
+  gt() |> 
+  fmt_number(
+    columns = c(mean, median, sd, min, max, skew, alphas),
+    decimals = 2) |> 
+  cols_label(mean = "Mean",
+             median = "Median",
+             sd = "SD",
+             min = "Minimum",
+             max = "Maximum",
+             skew = "Skewness",
+             alphas = "α") |> 
+  cols_align(
+    align = "right",
+    columns = c(mean, median, sd, min, max, skew, alphas)) |> 
+  tab_header(title = "Scale Descriptive Statistics") |> 
+  opt_row_striping()
+
+Score_Table
+
+# Creating objects to capture the scale measures' means and SDs
+m_SO <- round(Summary$mean[1], 2)
+sd_SO <- round(Summary$sd[1], 2)
+m_BS <- round(Summary$mean[2], 2) 
+sd_BS <- round(Summary$sd[2], 2)
+m_PSA <- round(Summary$mean[3], 2)
+sd_PSA <- round(Summary$sd[3], 2)
+
+# Examining distributions of continuous measures
+SO_Distribution <- ggplot(allscores.df, aes(x = Sexual_Objectification_Experiences)) +
+  geom_histogram(
+    aes(y = after_stat(density)),
+    bins = 30,
+    fill = "#669BBC",
+    color = "white",
+    alpha = 0.8,
+    na.rm = TRUE) +
+  geom_density(
+    linewidth = 0.9,
+    color = "#9A3038") +
+  labs(x = "Frequency of Sexual Objectification Experiences",
+       y = "Density") +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black", linewidth = 0.5))
+
+BS_Distribution <- ggplot(allscores.df, aes(x = Benevolent_Sexism)) +
+  geom_histogram(
+    aes(y = after_stat(density)),
+    bins = 30,
+    fill = "#669BBC",
+    color = "white",
+    alpha = 0.8,
+    na.rm = TRUE) +
+  geom_density(
+    linewidth = 0.9,
+    color = "#9A3038") +
+  labs(x = "Benevolent Sexism Attitudes",
+       y = "Density") +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black", linewidth = 0.5))
+
+SA_Distribution <- ggplot(allscores.df, aes(x = Safety_Anxiety)) +
+  geom_histogram(
+    aes(y = after_stat(density)),
+    bins = 30,
+    fill = "#669BBC",
+    color = "white",
+    alpha = 0.8,
+    na.rm = TRUE) +
+  geom_density(
+    linewidth = 0.9,
+    color = "#9A3038") +
+  labs(x = "Personal Safety Anxiety and Vigilance",
+       y = "Density") +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black", linewidth = 0.5))
+
+# Creating patchwork of plots so they appear together
+((SO_Distribution + BS_Distribution) / SA_Distribution) +
+  plot_annotation(title = "Frequency Distributions of Key Measures",
+                  theme = theme(plot.title = element_text(size = 20)))
+```
+
+```{r}
+## Examining zero-order correlations and scatterplots --> Note that assumption checks are skipped here, as they will be conducted for the main regression tests
+SO_by_BS <- cor.test(allscores.df$Sexual_Objectification_Experiences, allscores.df$Benevolent_Sexism, method = "pearson")
+
+SO_by_PSA <- cor.test(allscores.df$Sexual_Objectification_Experiences, allscores.df$Safety_Anxiety, method = "pearson")
+
+BS_by_PSA <- cor.test(allscores.df$Benevolent_Sexism, allscores.df$Safety_Anxiety, method = "pearson")
+
+SO_by_BS_plot <- ggplot(allscores.df, aes(x = Sexual_Objectification_Experiences, y = Benevolent_Sexism)) +
+  geom_point(alpha = 0.75) +
+  geom_smooth(
+    method = "lm",
+    se = TRUE,
+    color = "#27638A") +
+  labs(x = "Frequency of Sexual Objectification Experiences",
+       y = "Benevolent Sexism Attitudes") +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black", linewidth = 0.5)) +
+  annotate("label",
+           x = 3,
+           y = 1,
+           label = "r(283) = .12, p = .043")
+
+SO_by_PSA_plot <- ggplot(allscores.df, aes(x = Sexual_Objectification_Experiences, y = Safety_Anxiety)) +
+  geom_point(alpha = 0.75) +
+  geom_smooth(
+    method = "lm",
+    se = TRUE,
+    color = "#27638A") +
+  labs(x = "Frequency of Sexual Objectification Experiences",
+       y = "Personal Safety Anxiety and Vigilance") +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black", linewidth = 0.5)) +
+  annotate("label",
+           x = 3,
+           y = 2,
+           label = "r(283) = .26, p < .001")
+
+BS_by_PSA_plot <- ggplot(allscores.df, aes(x = Benevolent_Sexism, y = Safety_Anxiety)) +
+  geom_point(alpha = 0.75) +
+  geom_smooth(
+    method = "lm",
+    se = TRUE,
+    color = "#27638A") +
+  labs(x = "Benevolent Sexism Attitudes",
+       y = "Personal Safety Anxiety and Vigilance") +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "black", linewidth = 0.5)) +
+  annotate("label",
+           x = 4,
+           y = 2,
+           label = "r(283) = .06, p = .302")
+```
+```{r}
+#| fig-height: 8
+#| fig-width: 8
+((SO_by_BS_plot + SO_by_PSA_plot) / BS_by_PSA_plot) +
+    plot_annotation(title = "Scatterplots for Key Measures",
+                  theme = theme(plot.title = element_text(size = 20)))
+
+## Intercept-only Model
+mod0 <- lm(SA_c ~ 1, data = allscores.df)
+
+# Single-predictor model
+mod1 <- lm(SA_c ~ SO_c, data = allscores.df)
+
+# Two-predictor model
+mod2 <- lm(SA_c ~ SO_c + BS_c, data = allscores.df)
+
+# Interaction model
+mod3 <- lm(SA_c ~ SO_c + BS_c + SO_c * BS_c, data = allscores.df)
+
+# Running nested model comparisons
+tests <- anova(mod0, mod1, mod2, mod3)
+
+nested.f.tests <- tests |>
+  select(Res.Df, Df, F, `Pr(>F)`) |> # Selecting relevant stats to keep
+  rename("Residual DF" = Res.Df,
+         "Change in Df" = Df,
+         "Nested F" = F,
+         "Nested p" = `Pr(>F)`) |> 
+  mutate(`Nested p` = ifelse(`Nested p` < 0.001,
+                             "< .001", sprintf("%.3f", `Nested p`))) |> 
+  mutate(Model = c("Intercept-only", "M1: SO Experiences", "M2: + Benevolent Sexism", "M3: + Interaction")) |> # Adding informative model labels
+  relocate(Model, .before = 1)
+
+# Extracting overall model performance
+glance0 <- glance(mod0)
+glance1 <- glance(mod1)
+glance2 <- glance(mod2)
+glance3 <- glance(mod3)
+
+# Combining individual model performance metrics into one dataframe
+glances <- rbind(glance0,
+                 glance1,
+                 glance2,
+                 glance3) |> 
+  mutate(Model = c("Intercept-only", "M1: SO Experiences", "M2: + Benevolent Sexism", "M3: + Interaction")) |> 
+  relocate(Model, .before = 1)
+
+# Creating gt table
+nested.f.tests.table <- gt(nested.f.tests) |> 
+  fmt_number(columns = c("Nested F"), decimals = 2) |> 
+  cols_align(align = "left")
+
+## Combining nested tests and model performance
+comparison_table <- cbind(
+  Model = glances,
+  nested.f.tests)
+
+# Selecting relevants statistics for table
+comparison_table <- comparison_table |>
+  mutate(Delta.R2 = Model.r.squared - lag(Model.r.squared),
+         RMSE = c(sqrt(mean(residuals(mod0)^2)),
+                  sqrt(mean(residuals(mod1)^2)),
+                  sqrt(mean(residuals(mod2)^2)),
+                  sqrt(mean(residuals(mod3)^2)))) |>
+  select(Model.Model,
+         Model.r.squared,
+         Delta.R2,
+         Model.adj.r.squared,
+         RMSE,
+         "Residual DF",
+         Model.df,
+         "Nested F",
+         "Nested p",
+         Model.AIC)
+
+## Displaying combined model-comparison table
+comparison_table |>
+  gt() |>
+  fmt_number(columns = c(
+    Model.r.squared,
+    Model.adj.r.squared,
+    RMSE,
+    Delta.R2,
+    "Nested F"),
+    decimals = 2) |>
+  sub_missing(columns = c(Delta.R2, Model.df, "Nested F", "Nested p"),
+              missing_text = "—") |> 
+  cols_label(Model.Model = "Model",
+             Model.r.squared = "R²",
+             Model.adj.r.squared = "Adjusted R²",
+             RMSE = "RMSE",
+             Delta.R2 = "ΔR²",
+             "Residual DF" = "Residual df",
+             Model.df = "Nested df") |> 
+  cols_move(columns = Delta.R2,
+            after = "Residual DF") |> 
+  tab_header(title = "Nested Model Comparisons")
+
+# Evaluate Regression Diagnostics
+#plot(mod3) plots suggest that observations 11, 20, 33, 83, and 209 may bias the regression analysis
+
+plot(check_model(mod3)) +
+  plot_annotation(title = "Diagnostic Plots for Model 3")
+
+## Plots suggest no influential observations, but slight curvature at tail ends of normality of residuals plot and at left tail of homogeneity of variance plot
+# Although observations 11, 33, and 309 were flagged in the earlier diagnostic plot, all observations sit within the contour lines here
+```
+
+```{r}
+#| echo: true
+#| output: false
+check_collinearity(mod3) # Low correlation --> Multicollinearity not a concern
+
+# Modelling standardized residuals to see what proportion have sample/theoretical quantiles +/- 2SDs
+std_res <- rstandard(mod3)
+
+percent_above_2_quantiles <- mean(abs(std_res) > 2) * 100 # 4.9% --> Within normal, so residual normality is not a concern here
+```
+#### Model 3 with HC3 Estimator
+HC3 is a heteroscedasticity-consistent standard error estimator for linear regression that adjusts squared OLS residuals by leverage to keep hypothesis tests accurate when error variance is unequal. In essence, it will make more accurate predictions about variance by widening standard error estimates
+
+```{r}
+# Reporting regression results for original model with HC3 SE estimate
+coefficient_results <- tidy(coeftest(mod3, vcov = vcovHC(mod3, type = "HC3")),
+                                        conf.int = TRUE,
+                                        conf.level = 0.95)
+
+coefficient_results |>
+  mutate(term = dplyr::recode(term,
+                              "(Intercept)" = "Intercept",
+                              "SO_c" = "Sexual Objectification Experience Frequency",
+                              "BS_c" = "Benevolent Sexism",
+                              "SO_c:BS_c" = "Sexual Objectification × Benevolent Sexism")) |>
+  select(term,
+         estimate,
+         std.error,
+         conf.low,
+         conf.high,
+         p.value) |>
+  gt() |>
+  cols_label(term = "Predictor",
+             estimate = "Estimate",
+             std.error = "SE",
+             conf.low = "95% CI lower",
+             conf.high = "95% CI upper",
+             p.value = "p") |>
+  fmt_number(columns = c(
+    estimate,
+    std.error,
+    conf.low,
+    conf.high),
+    decimals = 3) |>
+  fmt(columns = p.value,
+      fns = function(x) {
+        ifelse(
+          x < .001,
+          "< .001",
+          sprintf("%.3f", x))}) |> 
+  tab_header(title = "Interaction Model Results with HC3 Estimator")
+
+# Simple slopes: Looking at influence of sexual objectification frequency at specific values of benevolent sexism
+# Pick the probing values: low (-1 SD), average (mean) and high (+1 SD) benevolent sexism
+BS_mean <- mean(allscores.df$BS_c, na.rm = TRUE)
+BS_sd <- sd(allscores.df$BS_c, na.rm = TRUE)
+BS_values <- BS_mean + c(-1, 0, 1) * BS_sd
+
+# Simple slopes for sexual objectification frequency at each benevolent sexism value.
+HC3_BS_trends <- emtrends(mod3,
+                             specs = ~ BS_c,
+                             var = "SO_c",
+                             at = list(BS_c = BS_values),
+                             vcov. = vcovHC(mod3, type = "HC3"))
+
+# Building a data frame of the simple slopes
+HC3_simple_slopes_df <- summary(HC3_BS_trends,
+  infer = c(TRUE, TRUE),
+  null = 0) |> 
+  as.data.frame() |>
+  mutate(BS_level = c("-1 SD", "Mean", "+1 SD")) |>
+  select(BS_level, SO_c.trend, SE, df, t.ratio, p.value, lower.CL, upper.CL)
+
+## Turning the simple slopes dataframe into a table
+HC3_simple_slopes_table <- gt(HC3_simple_slopes_df) |> 
+  cols_label(BS_level = "Benevolent Sexism",
+             SO_c.trend = "Estimate",
+             lower.CL = "Lower 95% CI",
+             upper.CL = "Upper 95% CI",
+             t.ratio = "t",
+             p.value = "p") |> 
+fmt_number(columns = c(SO_c.trend, SE, t.ratio, lower.CL, upper.CL), decimals = 2) |>
+  fmt(columns = p.value,
+      fns = \(x) scales::pvalue(x, accuracy = 0.001, add_p = FALSE)) |>
+  cols_move(columns = c(lower.CL, upper.CL),
+    after = SE) |> 
+  tab_header(title = "Simple Effects of Sexual Objectication Frequency Across Levels of Benevolent Sexism")
+
+# Generating predicted outcomes to prepare visualization
+HC3_predictions <- ggpredict(mod3,
+  terms = c("SO_c", "BS_c [meansd]"), # Specifying the three levels of benevolent sexism
+  vcov.fun = sandwich::vcovHC,
+  vcov.type = "HC3")
+
+# Un-centering the mean to make scale values more interpretable
+predictions_df <- as.data.frame(HC3_predictions) |> 
+  mutate(SO_original = x + m_SO,
+    BS_original = as.numeric(as.character(group)) + m_BS,
+    predicted_original = predicted + m_PSA,
+    conf.low_original = conf.low + m_PSA,
+    conf.high_original = conf.high + m_PSA)
+
+# Creating plot
+HC3_plot <- ggplot(predictions_df,
+         aes(x = SO_original, y = predicted_original,
+             colour = group, fill = group)) +
+  geom_line(linewidth = 1) +
+  geom_ribbon(aes(ymin = conf.low_original, ymax = conf.high_original),
+    alpha = 0.15,
+    colour = NA) +
+  scale_colour_discrete(labels = c("-1 SD", "Mean", "+1 SD")) +
+  scale_fill_discrete(labels = c("-1 SD", "Mean", "+1 SD")) +
+  theme_classic() +
+  labs(x = "Sexual Objectification Experience Frequency",
+    y = "Predicted Safety Anxiety",
+    colour = "Benevolent Sexism",
+    fill = "Benevolent Sexism",
+    title = "Simple Slopes of Objectification Frequency at Levels of Benevolent Sexism")
+
+HC3_simple_slopes_table
+
+HC3_plot
+```
+#### Sensitivity Model with HC3 Estimator
+```{r}
+# Sensitivity model without observations that were flagged by diagnostic tests
+mod3_sensitivity <- lm(SA_c ~ SO_c * BS_c,
+  data = allscores.df[-c(11, 20, 33, 83, 193, 209, 225), ])
+
+# Reporting regression results for *sensitivity* model with HC3 SE estimate
+sensitivity_coefficient_results <- tidy(coeftest(mod3_sensitivity, vcov = vcovHC(mod3_sensitivity, type = "HC3")),
+                                        conf.int = TRUE,
+                                        conf.level = 0.95)
+
+sensitivity_coefficient_results |>
+  mutate(term = dplyr::recode(term,
+                              "(Intercept)" = "Intercept",
+                              "SO_c" = "Sexual Objectification Experience Frequency",
+                              "BS_c" = "Benevolent Sexism",
+                              "SO_c:BS_c" = "Sexual Objectification × Benevolent Sexism")) |>
+  select(term,
+         estimate,
+         std.error,
+         conf.low,
+         conf.high,
+         p.value) |>
+  gt() |>
+  cols_label(term = "Predictor",
+             estimate = "Estimate",
+             std.error = "SE",
+             conf.low = "95% CI lower",
+             conf.high = "95% CI upper",
+             p.value = "p") |>
+  fmt_number(columns = c(
+    estimate,
+    std.error,
+    conf.low,
+    conf.high),
+    decimals = 3) |>
+  fmt(columns = p.value,
+      fns = function(x) {
+        ifelse(
+          x < .001,
+          "< .001",
+          sprintf("%.3f", x))}) |> 
+  tab_header(title = "Sensitivity Interaction Model Results with HC3 Estimator")
+
+# Simple slopes for sensitivity model (also using HC3 estimates)
+Sensitivity_BS_trends <- emtrends(mod3_sensitivity,
+                          specs = ~ BS_c,
+                          var = "SO_c",
+                          at = list(BS_c = BS_values),
+                          vcov. = vcovHC(mod3_sensitivity, type = "HC3"))
+
+# Building a data frame of the simple slopes
+Sensitivity_simple_slopes_df <- summary(Sensitivity_BS_trends,
+                                infer = c(TRUE, TRUE),
+                                null = 0) |> 
+  as.data.frame() |>
+  mutate(BS_level = c("-1 SD", "Mean", "+1 SD")) |>
+  select(BS_level, SO_c.trend, SE, df, t.ratio, p.value, lower.CL, upper.CL)
+
+## Turning the simple slopes dataframe into a table
+Sensitivity_simple_slopes_table <- gt(Sensitivity_simple_slopes_df) |> 
+  cols_label(BS_level = "Benevolent Sexism",
+             SO_c.trend = "Estimate",
+             lower.CL = "Lower 95% CI",
+             upper.CL = "Upper 95% CI",
+             t.ratio = "t",
+             p.value = "p") |> 
+  fmt_number(columns = c(SO_c.trend, SE, t.ratio, lower.CL, upper.CL), decimals = 2) |>
+  fmt(columns = p.value,
+      fns = \(x) scales::pvalue(x, accuracy = 0.001, add_p = FALSE)) |>
+  cols_move(columns = c(lower.CL, upper.CL),
+            after = SE) |> 
+  tab_header(title = "Simple Effects of Sexual Objectication Frequency Across Levels of Benevolent Sexism")
+
+# Generating predicted outcomes to prepare visualization
+Sensitivity_predictions <- ggpredict(mod3_sensitivity,
+                             terms = c("SO_c", "BS_c [meansd]"), # Specifying the three levels of benevolent sexism
+                             vcov.fun = sandwich::vcovHC,
+                             vcov.type = "HC3")
+
+# Calculating means with observations removed
+sensitivity_scores <- allscores.df[-c(11, 20, 33, 83, 193, 209, 225), ] |> 
+  select(Sexual_Objectification_Experiences, Benevolent_Sexism, Safety_Anxiety) |> 
+  describe()
+
+sensitivity_m_SO <- round(sensitivity_scores$mean[1], 2)
+sensitivity_m_BS <- round(sensitivity_scores$mean[2], 2) 
+sensitivity_m_PSA <- round(sensitivity_scores$mean[3], 2)
+
+# Un-centering the mean to make scale values more interpretable
+Sensitivity_predictions_df <- as.data.frame(Sensitivity_predictions) |> 
+  mutate(SO_original = x + sensitivity_m_SO,
+         BS_original = as.numeric(as.character(group)) + sensitivity_m_BS,
+         predicted_original = predicted + sensitivity_m_PSA,
+         conf.low_original = conf.low + sensitivity_m_PSA,
+         conf.high_original = conf.high + sensitivity_m_PSA)
+
+# Creating plot
+Sensitivity_plot <- ggplot(Sensitivity_predictions_df,
+                   aes(x = SO_original, y = predicted_original,
+                       colour = group, fill = group)) +
+  geom_line(linewidth = 1) +
+  geom_ribbon(aes(ymin = conf.low_original, ymax = conf.high_original),
+              alpha = 0.15,
+              colour = NA) +
+  scale_colour_discrete(labels = c("-1 SD", "Mean", "+1 SD")) +
+  scale_fill_discrete(labels = c("-1 SD", "Mean", "+1 SD")) +
+  theme_classic() +
+  labs(x = "Sexual Objectification Experience Frequency",
+       y = "Predicted Safety Anxiety",
+       colour = "Benevolent Sexism",
+       fill = "Benevolent Sexism",
+       title = "Simple Slopes of Objectification Frequency at Levels of Benevolent Sexism")
+
+Sensitivity_simple_slopes_table
+Sensitivity_plot
+```
+#### Limitations
+Scale psychometrics
+
+## References
