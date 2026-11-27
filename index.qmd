@@ -38,7 +38,7 @@ Two main hypotheses guided the analysis:
 - Hypothesis 2: Benevolent sexism will moderate the association between experiences of sexual objectification and personal safety anxiety, such that the positive association will be stronger among women reporting higher levels of benevolent sexism.
 
 ## Methods
-```{r} 
+```{r}
 #| output: false
 library(tidyverse)
 library(naniar)
@@ -59,11 +59,13 @@ library(patchwork)
 my_data <- read.xlsx("https://raw.githubusercontent.com/agraha89/graham-capstone/main/Dataset.xlsx", sheet = 1)
 
 # Investigating MCAR and percentage missing for each item --> Low missingness and non-significant MCAR test help justify item-level mean imputation for scale scoring
-mcar_test(my_data)
+mcar <- mcar_test(my_data)
 
-colMeans(is.na(my_data[, c(paste0("SO", 1:11),
+Item_Missingness <- colMeans(is.na(my_data[, c(paste0("SO", 1:11),
                              paste0("BS", 1:6),
-                             paste0("PSA", 1:8))])) * 100
+                             paste0("PSA", 1:8))])) * 100 
+  
+Item_Missingness_Value <- max(Item_Missingness)
 
 #### Scoring Scales ####
 moderation_analysis.df <- my_data
@@ -107,32 +109,7 @@ allscores.df <- cbind(SO_scores.df, BS_scores.df, PSA_scores.df) |>
   mutate(SO_c = Sexual_Objectification_Experiences - mean(Sexual_Objectification_Experiences),
          BS_c = Benevolent_Sexism - mean(Benevolent_Sexism),
          SA_c = Safety_Anxiety - mean(Safety_Anxiety))
-```
-Lucid account of data source, sample, variables, preparation, models, comparisons, diagnostics, and rationale for major decisions; sufficient detail without a code walkthrough
 
-Explain how data was originally cleaned
-
-| Variable    | Description                                                    |
-|-------------|----------------------------------------------------------------|
-| `SO`        | **Predictor:** Frequency of sexual objectification experiences |
-| `BS`        | **Moderator:** Benevolent sexism attitudes/endorsement         |
-| `PSA`       | **Outcome:** Personal safety anxiety and vigilance             |
-
-
-
-| Model | Formula | Research rationale |
-|:-----------------------|:-----------------------|:-----------------------|
-| Null | `PSA ~ 1` | Baseline model |
-| Predictor-Only | `PSA ~ SO` | Frequency of sexual objectification experiences predicts safety anxiety |
-| Interaction | `PSA ~ SO + BS + SO * BS` | Interaction explains additional variation |
-
-
-## Results
-
-Prioritizes important findings, explains estimates and uncertainty in substantive terms, connects results to questions, and calibrates claims and limitations.
-
-
-```{r}
 # Creating demographics dataframe
 demographics.df <- my_data |> 
   select(Religiosity, Political.Orientation, Age, `LGBTQ2S+.Identity`)
@@ -232,13 +209,6 @@ Demographics_Score_Table <- Demographics_Summary |>
     columns = c(mean, median, sd, min, max, skew)) |> 
   tab_header(title = "Demographic Descriptive Statistics")
 
-Demographics_Score_Table
-
-# Creating patchwork of plots so they appear together
-((Rel_Distribution + PO_Distribution) / (Age_Distribution + LGBTQ2S_Distribution)) +
-  plot_annotation(title = "Frequency Distributions of Demographic Measures",
-                  theme = theme(plot.title = element_text(size = 20)))
-
 # Creating objects to capture the continuous demographic measures' means and SDs
 m_Rel <- round(Demographics_Summary$mean[1], 2)
 sd_Rel <- round(Demographics_Summary$sd[1], 2)
@@ -284,8 +254,6 @@ Score_Table <- Summary |>
     columns = c(mean, median, sd, min, max, skew, alphas)) |> 
   tab_header(title = "Scale Descriptive Statistics") |> 
   opt_row_striping()
-
-Score_Table
 
 # Creating objects to capture the scale measures' means and SDs
 m_SO <- round(Summary$mean[1], 2)
@@ -355,6 +323,20 @@ SA_Distribution <- ggplot(allscores.df, aes(x = Safety_Anxiety)) +
   plot_annotation(title = "Frequency Distributions of Key Measures",
                   theme = theme(plot.title = element_text(size = 20)))
 ```
+#### Data Source and Participants
+The current project used an existing clean, anonymized dataset containing participants' responses to measures of sexual objectification frequency, benevolent sexism, personal safety anxiety, and relevant demographic characteristics. Data were collected in early 2026 as part of an undergraduate thesis project at Western University (Desmarais, 2026; WREB Approval #128042) examining whether various emotional responses mediated the association between the frequency of experiencing daily sexist events and resistance to sexual objectification. Additional data (including variables analyzed here) were collected as part of this project, providing a comprehensive dataset of variables related to women’s experiences of and attitudes toward sexism and objectification. The dataset for the current project is available through an Excel workbook hosted in its corresponding GitHub repository. As noted in the repository's `README.md` file, the unit of observation is the individual participant, with each row representing one respondent and each column representing an item-level response or demographic characteristic. In accordance with the ethics agreement terms, the principal investigator approved the sharing of the reduced, anonymized dataset used for the current project. 
+
+Data were originally collected from 358 undergraduate women using Western University’s Psychology research participation pool (SONA). After excluding duplicates and poor-response cases (i.e., straight-lining, failed attention checks, incomplete responses, low reCAPTCHA score), the final sample consisted of `r N` self-identified women (*M*~age~ = `r m_Age`, *SD* = `r sd_Age`). On average, participants reported low levels of religiosity (*M* = `r m_Rel`, *SD* = `r sd_Rel`) and identified as politically left-leaning to centrist (*M* = `r m_PO`, *SD* = `r sd_PO`). `r LGBTQ2S_Proportion`% identified as members of the LGBTQ2S+ community.
+
+#### Measures
+
+As presented in the table below, the main variables of interest were women's frequency of experiencing sexual objectification (SO; predictor), benevolent sexist attitudes (BS; moderator), and personal safety anxiety and vigilance (PSA; outcome). Whereas the measures of benevolent sexism (α = `r round(BS_scores$alpha, 2)`; Glick & Whitehead, 2010) and personal safety anxiety (α = `r round(PSA_scores$alpha, 2)`; Calogero et al., 2021) were taken directly from validated scales, the measure of sexual objectification frequency (α = `r round(SO_scores$alpha, 2)`) was created by compiling 11 relevant items from three relevant validated scales (Cary et al., 2024; Kozee et al., 2007; Swim et al., 1998). Items were averaged to compute composite scale scores, reverse-coding where applicable. Higher scores on each of the scales indicating more frequent sexual objectification experiences, higher benevolent sexism attitudes, and higher personal safety anxiety and vigilance, respectively. Low item missingness (largest value = `r round(Item_Missingness_Value, 2)`%) and a non-significant MCAR test (χ²(`r round(mcar$df, 2)`) = `r round(mcar$statistic, 2)`, *p* = `r round(mcar$p.value, 3)`) endorsed the use of item-level mean imputation. Details of the key variables' items and scoring are available in the provided `README.md` file hosted in this project's GitHub repository. 
+
+| Variable    | Description                                                    |
+|-------------|----------------------------------------------------------------|
+| `SO`        | **Predictor:** Frequency of sexual objectification experiences |
+| `BS`        | **Moderator:** Benevolent sexism attitudes/endorsement         |
+| `PSA`       | **Outcome:** Personal safety anxiety and vigilance             |
 
 ```{r}
 ## Examining zero-order correlations and scatterplots --> Note that assumption checks are skipped here, as they will be conducted for the main regression tests
@@ -363,7 +345,11 @@ SO_by_BS <- cor.test(allscores.df$Sexual_Objectification_Experiences, allscores.
 SO_by_PSA <- cor.test(allscores.df$Sexual_Objectification_Experiences, allscores.df$Safety_Anxiety, method = "pearson")
 
 BS_by_PSA <- cor.test(allscores.df$Benevolent_Sexism, allscores.df$Safety_Anxiety, method = "pearson")
+```
 
+After examining the scales' descriptive statistics (below), zero-order Pearson correlations and scatterplots were examined to provide an initial evaluation of the relationships between the key variables. This examination revealed relatively weak associations, with the largest correlation demonstrating a significant and positive association between sexual objectification frequency and personal safety anxiety, *r*(`r SO_by_PSA$parameter`) = `r round(SO_by_PSA$estimate, 2)`, *p* `r ifelse(SO_by_PSA$p.value < .001, "< .001", paste("=", round(SO_by_PSA$p.value, 3)))`.
+
+```{r}
 SO_by_BS_plot <- ggplot(allscores.df, aes(x = Sexual_Objectification_Experiences, y = Benevolent_Sexism)) +
   geom_point(alpha = 0.75) +
   geom_smooth(
@@ -416,12 +402,32 @@ BS_by_PSA_plot <- ggplot(allscores.df, aes(x = Benevolent_Sexism, y = Safety_Anx
            label = "r(283) = .06, p = .302")
 ```
 ```{r}
+## Descriptives table
+Score_Table
+```
+```{r}
 #| fig-height: 8
 #| fig-width: 8
 ((SO_by_BS_plot + SO_by_PSA_plot) / BS_by_PSA_plot) +
     plot_annotation(title = "Scatterplots for Key Measures",
                   theme = theme(plot.title = element_text(size = 20)))
+```
 
+#### Model Specification and Comparison
+
+The next stage of the project focused on model specification and comparison. Mean-centred versions of the scale scores were computed and used for these models. A series of nested linear regression models was estimated to examine the association between sexual objectification frequency and personal safety anxiety, and assess whether benevolent sexism moderated this relationship. Linear regression was selected because the outcome variable was a continuous composite score and the primary objective was to examine the associations between continuous predictors and personal safety anxiety. Note that some researchers may argue that an ordinal model is better suited to the data, as the variables were measured using Likert scales. Linear models are used here because the composite scores behave as quasi-continuous and because interaction effects are simpler to specify and interpret. Additional analyses beyond the scope of the current project may find value in comparing the results of linear and ordinal regression models. 
+
+| Model | Formula | Research rationale |
+|:-----------------------|:-----------------------|:-----------------------|
+| Null | `PSA ~ 1` | Baseline model |
+| Predictor-Only | `PSA ~ SO` | Frequency of sexual objectification experiences predicts safety anxiety |
+| Interaction | `PSA ~ SO + BS + SO * BS` | Interaction explains additional variation |
+
+As outlined the table above, a series of nested regression models was estimated to determine whether sexual objectification frequency and benevolent sexism explained meaningful variance in personal safety anxiety and whether their interaction improved model performance. The first model was an intercept-only model, providing a baseline against which subsequent improvements in model fit could be evaluated. The second model included sexual objectification frequency as the sole predictor of personal safety anxiety. The third model added benevolent sexism to determine whether it explained additional variance beyond sexual objectification frequency. Finally, the fourth model included the interaction between sexual objectification frequency and benevolent sexism to evaluate the proposed moderation effect.
+
+Model comparisons were conducted using nested-model F-tests and evaluating changes in explained variance (ΔR²), adjusted R², and root mean square error (RMSE). These statistics provided complementary information regarding whether additional predictors meaningfully improved performance relative to the increased complexity of each model. Akaike's Information Criterion (AIC) was also examined as a supplementary indicator of relative model fit.
+
+```{r}
 ## Intercept-only Model
 mod0 <- lm(SA_c ~ 1, data = allscores.df)
 
@@ -472,7 +478,7 @@ comparison_table <- cbind(
   Model = glances,
   nested.f.tests)
 
-# Selecting relevants statistics for table
+# Selecting relevant statistics for table
 comparison_table <- comparison_table |>
   mutate(Delta.R2 = Model.r.squared - lag(Model.r.squared),
          RMSE = c(sqrt(mean(residuals(mod0)^2)),
@@ -484,6 +490,8 @@ comparison_table <- comparison_table |>
          Delta.R2,
          Model.adj.r.squared,
          RMSE,
+         Model.statistic,
+         Model.df,
          "Residual DF",
          "Change in Df",
          "Nested F",
@@ -497,17 +505,19 @@ comparison_table |>
     Model.r.squared,
     Model.adj.r.squared,
     RMSE,
+    Model.statistic,
     Delta.R2,
     "Nested F"),
     decimals = 2) |>
-  sub_missing(columns = c(Delta.R2, "Change in Df", "Nested F", "Nested p"),
+  sub_missing(columns = c(Delta.R2, Model.statistic, Model.df, "Change in Df", "Nested F", "Nested p"),
               missing_text = "—") |> 
   cols_label(Model.Model = "Model",
              Model.r.squared = "R²",
              Model.adj.r.squared = "Adjusted R²",
              RMSE = "RMSE",
+             Model.statistic = "F",
+             Model.df = "df",
              Delta.R2 = "ΔR²",
-             "Residual DF" = "Residual df",
              "Change in Df" = "Nested df",
              Model.AIC = "AIC") |> 
   cols_move(columns = Delta.R2,
@@ -516,19 +526,17 @@ comparison_table |>
             after = Delta.R2) |> 
   tab_header(title = "Nested Model Comparisons")
 
-# Evaluate Regression Diagnostics
-#plot(mod3) plots suggest that observations 11, 20, 33, 83, and 209 may bias the regression analysis
 ```
 
-#### Diagnostic Plots for Model 3
-```{r}
-#| fig-height: 8
-#| fig-width: 8
-check_model(mod3)
+As evidenced in the table above, the model with sexual objectification frequency as the sole predictor explained only `r round(comparison_table$Model.r.squared[2] * 100, 1)`% of the variance in the outcome. Compared with the intercept-only model, adding sexual objectification frequency significantly improved model fit, *F*(`r comparison_table[["Change in Df"]][2]`, `r comparison_table[["Residual DF"]][2]`) = `r round(comparison_table[["Nested F"]][2], 2)`, *p* `r comparison_table[["Nested p"]][2]`. The RMSE decreased from `r round(comparison_table$RMSE[1], 2)` in the intercept-only model to `r round(comparison_table$RMSE[2], 2)`, indicating a modest improvement in prediction.
 
-## Plots suggest no influential observations, but slight curvature at tail ends of normality of residuals plot and at left tail of homogeneity of variance plot
-# Although observations 11, 33, 48, 83, and 193 were flagged in the earlier diagnostic plot, all observations sit within the contour lines here
-```
+Adding benevolent sexism in the subsequent model did not significantly improve model fit, *F*(`r comparison_table[["Change in Df"]][3]`, `r comparison_table[["Residual DF"]][3]`) = `r round(comparison_table[["Nested F"]][3], 2)`, *p* = `r comparison_table[["Nested p"]][3]`. The additional predictor explained negligible variance beyond sexual objectification frequency, with R² remaining unchanged. Furthermore, RMSE also remained unchanged.
+
+Finally, the interaction model was examined to determine whether the association between SO experiences and personal safety anxiety varied according to BS. The addition of the interaction did not significantly improve model performance, *F*(`r comparison_table[["Change in Df"]][4]`, `r comparison_table[["Residual DF"]][4]`) = `r round(comparison_table[["Nested F"]][4], 2)`, *p* = `r comparison_table[["Nested p"]][4]`. The overall model explained `r round(comparison_table$Model.r.squared[4] * 100, 1)`% of the variance in personal safety anxiety. Adjusted R² changed from `r round(comparison_table$Model.adj.r.squared[3], 3)` to `r round(comparison_table$Model.adj.r.squared[4], 3)`, while AIC changed from `r round(comparison_table$Model.AIC[3], 2)` to `r round(comparison_table$Model.AIC[4], 2)`.
+
+Taken together, the model comparisons suggest that sexual objectification frequency provided the primary explanatory contribution, whereas adding benevolent sexism and the interaction term did not meaningfully improve the model's explanatory or predictive performance. Nonetheless, as the moderation analysis remained the primary purpose of this project, diagnostic checks and interaction tests were subsequently undertaken to examine the patterns of effects.
+
+#### Diagnostic Checks for Interaction Model
 
 ```{r}
 #| output: false
@@ -539,6 +547,26 @@ std_res <- rstandard(mod3)
 
 percent_above_2_quantiles <- mean(abs(std_res) > 2) * 100 # 5.3% --> Within normal, so residual normality is not a concern here
 ```
+Diagnostic assessments were conducted for the interaction model to evaluate the appropriateness of the regression estimates and associated statistical tests. As shown below, the diagnostic plots suggested some potential deviations from the assumptions of linear regression, including slight curvature in the tail-ends of the residual normality and homogeneity-of-variance assessments. However, there was no substantial evidence of multicollinearity, and the observations did not appear to exceed the relevant Cook's distance contours.
+
+Although several observations were initially flagged during preliminary diagnostic assessments (i.e., `plot(mod3)`), further examination did not indicate that any single observation exerted an excessive influence on the fitted model. Approximately `r round(percent_above_2_quantiles, 1)`% of standardized residuals exceeded ±2, which did not suggest a meaningful departure from expected residual behaviour.
+```{r}
+#| fig-height: 8
+#| fig-width: 8
+check_model(mod3)
+
+# Evaluate Regression Diagnostics
+#plot(mod3) plots suggest that observations 11, 33, 48, 83, and 193 may bias the regression analysis
+## check_model plots suggest no influential observations (i.e., all within contour lines), but slight curvature at tail ends of normality of residuals plot and at left tail of homogeneity of variance plot
+```
+Given the potential for heteroscedasticity to bias the findings, heteroscedasticity-consistent HC3 robust standard errors were used when evaluating the interaction model. This estimator adjusts standard errors to provide more robust inferences when the assumption of constant residual variance may not be satisfied. As an additional check, a sensitivity model that excluded five observations flagged as potential influential by `plot(mod3)` was conducted. As the findings did not substantively alter the conclusions, the top-line results of this additional analysis are included in the appendix.
+
+## Results
+
+
+
+Prioritizes important findings, explains estimates and uncertainty in substantive terms, connects results to questions, and calibrates claims and limitations.
+
 #### Model 3 with HC3 Estimator
 HC3 is a heteroscedasticity-consistent standard error estimator for linear regression that adjusts squared OLS residuals by leverage to keep hypothesis tests as accurate as possible when error variance is unequal. In essence, it will make more accurate predictions about variance by widening standard error estimates.
 
@@ -652,6 +680,25 @@ HC3_simple_slopes_table
 
 HC3_plot
 ```
+
+#### Limitations
+Scale psychometrics
+
+## References
+
+## Appendix: Additional Tables and Figures
+#### Demographic Measure Descriptives
+```{r}
+Demographics_Score_Table
+
+((Rel_Distribution + PO_Distribution) / (Age_Distribution + LGBTQ2S_Distribution)) +
+  plot_annotation(title = "Frequency Distributions of Demographic Measures",
+                  theme = theme(plot.title = element_text(size = 20)))
+
+((SO_Distribution + BS_Distribution) / SA_Distribution) +
+  plot_annotation(title = "Frequency Distributions of Key Measures",
+                  theme = theme(plot.title = element_text(size = 20)))
+```
 #### Sensitivity Model with HC3 Estimator
 ```{r}
 # Sensitivity model without observations that were flagged by diagnostic tests
@@ -760,7 +807,3 @@ Sensitivity_plot <- ggplot(Sensitivity_predictions_df,
 Sensitivity_simple_slopes_table
 Sensitivity_plot
 ```
-#### Limitations
-Scale psychometrics
-
-## References

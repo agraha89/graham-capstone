@@ -400,6 +400,8 @@ comparison_table <- comparison_table |>
          Delta.R2,
          Model.adj.r.squared,
          RMSE,
+         Model.statistic,
+         Model.df,
          "Residual DF",
          "Change in Df",
          "Nested F",
@@ -413,6 +415,7 @@ comparison_table |>
     Model.r.squared,
     Model.adj.r.squared,
     RMSE,
+    Model.statistic,
     Delta.R2,
     "Nested F"),
     decimals = 2) |>
@@ -422,6 +425,8 @@ comparison_table |>
              Model.r.squared = "R²",
              Model.adj.r.squared = "Adjusted R²",
              RMSE = "RMSE",
+             Model.statistic = "F",
+             Model.df = "df",
              Delta.R2 = "ΔR²",
              "Change in Df" = "Nested df",
              Model.AIC = "AIC") |> 
