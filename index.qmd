@@ -1,6 +1,6 @@
 ---
 title: "The Protection Paradox" 
-subtitle: "Benevolent Sexism Amplifies the Link Between Sexual Objectification and Personal Safety Anxiety"
+subtitle: "Examining the Moderating Role of Benevolent Sexism in the Association Between Sexual Objectification Experiences and Safety Anxiety"
 author: "Alana Graham"
 format:
   html:
@@ -13,18 +13,35 @@ editor: visual
 execute:
   warning: false
   message: false
-  echo: true
+  echo: false
 ---
 
 ## Introduction
 
-Clear, compelling framing of the phenomenon, research question, and why it matters; variables and context are intelligible.
+Sexual objectification (SO) is a pervasive feature of women's everyday experiences, reflecting broader gendered patterns in how women are perceived, evaluated, and treated. SO occurs when individuals – particularly women – are regarded primarily in terms of their physical appearance and sexual desirability rather than as whole people with unique thoughts, identities, and agency (Fredrickson & Roberts, 1997; Nussbaum, 1995; Pecini et al., 2023). These experiences can manifest through interpersonal interactions, including unwanted staring, sexually suggestive comments, catcalling, and unwanted sexual advances, as well as through broader cultural representations that emphasize women's appearance and sexual desirability (Kozee et al., 2007; Ward, 2016). Importantly, sexual objectification is not limited to isolated incidents but represents a recurring feature of women's social environments (Holland et al., 2017).
+
+Objectification theory (Fredrickson & Roberts, 1997) provides a framework for understanding the psychological consequences of these experiences. Repeated exposure to sexually objectifying treatment can encourage women to internalize an outsider perspective of their bodies, contributing to self-objectification, body surveillance, body shame, and appearance-related anxiety (Moradi & Huang, 2008; Szymanski et al., 2011). However, the implications of sexual objectification extend beyond women's perceptions of their appearance. Experiences of objectification can also contribute to concerns about personal safety, physical vulnerability, and the possibility of unwanted or threatening interactions (Calogero et al., 2021). In turn, these concerns may influence how women navigate their social environments and respond to potentially threatening situations.
+
+Calogero and colleagues (2021) conceptualized personal safety anxiety as a diffuse sense of apprehension and vigilance concerning potential threats to one's physical safety and personal boundaries. Their research demonstrated that experiences of sexual objectification were associated with greater personal safety anxiety, which subsequently contributed to restrictions in women's spatial autonomy. These findings suggest that sexual objectification may influence not only how women perceive themselves, but also how safe they feel navigating everyday environments. Given the potential implications of these experiences for women's autonomy and well-being, identifying factors associated with the propensity to experience personal safety anxiety and vigilance represents an important direction for further research.
+
+Although sexual objectification may contribute to heightened concerns about personal safety, women may differ in how they interpret and respond to these experiences. One potentially relevant individual difference is benevolent sexism (BS). According to ambivalent sexism theory (Glick & Fiske, 1996), sexism encompasses both hostile and benevolent attitudes toward women. Whereas hostile sexism involves explicitly negative attitudes and stereotypes, benevolent sexism consists of subjectively positive attitudes that idealize women while simultaneously reinforcing traditional gender roles and gender inequality. Notably, benevolent sexism positions women as inherently vulnerable, morally superior, and deserving of male protection, framing men as protectors and women as dependent recipients of protection (Glick & Fiske, 1996).
+
+Despite its seemingly favourable presentation, benevolent sexism can reinforce gendered expectations and power differences. For example, beliefs that women require protection may contribute to the normalization of women's perceived vulnerability or the expectation of men’s protection, potentially shaping how they interpret experiences that threaten their personal safety. Extant research has demonstrated that benevolent sexist attitudes toward women can have consequential implications for women's responses to gender inequality, including reduced engagement in collective action (Becker & Wright, 2011). Additionally, individuals may be less likely to recognize benevolent sexism as discriminatory because of its comparatively positive and complimentary façade (Hopkins-Doyle et al., 2019).
+
+Considering these implications, benevolent sexism may be particularly relevant to understanding individual differences in women's personal safety anxiety following sexually objectifying experiences. Specifically, women who strongly endorse benevolent sexism may be more likely to interpret objectifying experiences through a framework of flattery or protective paternalism. As such, these beliefs may limit how threatening women perceive such experiences to be, thereby altering the association between sexual objectification and personal safety anxiety. Although previous research has established an association between sexual objectification and personal safety anxiety (Calogero et al., 2021), less is understood about whether this relationship varies according to women's endorsement of benevolent sexism.
+
+The present study examined the association between the frequency of women’s sexual objectification experiences and their personal safety anxiety, with particular attention to the potential moderating role of benevolent sexism. Specifically, this project investigated whether more frequent experiences of sexual objectification were associated with greater personal safety anxiety and whether the strength of this association differed according to women's endorsement of benevolent sexism. Understanding these relationships may contribute to a more comprehensive account of the psychological implications of everyday objectification and the individual differences that may shape women's experiences of personal safety.
+
+Two main hypotheses guided the analysis:
+
+- Hypothesis 1: More frequent experiences of sexual objectification will be positively associated with women’s personal safety anxiety.
+- Hypothesis 2: Benevolent sexism will moderate the association between experiences of sexual objectification and personal safety anxiety, such that the positive association will be stronger among women reporting higher levels of benevolent sexism.
 
 ## Methods
 ```{r} 
-#| echo: true
 #| output: false
 library(tidyverse)
+library(naniar)
 library(gt)
 library(openxlsx)
 library(dplyr)
@@ -40,6 +57,13 @@ library(patchwork)
 
 # Loading dataset
 my_data <- read.xlsx("https://raw.githubusercontent.com/agraha89/graham-capstone/main/Dataset.xlsx", sheet = 1)
+
+# Investigating MCAR and percentage missing for each item --> Low missingness and non-significant MCAR test help justify item-level mean imputation for scale scoring
+mcar_test(my_data)
+
+colMeans(is.na(my_data[, c(paste0("SO", 1:11),
+                             paste0("BS", 1:6),
+                             paste0("PSA", 1:8))])) * 100
 
 #### Scoring Scales ####
 moderation_analysis.df <- my_data
@@ -82,11 +106,26 @@ PSA_scores.df <- as.data.frame(PSA_scores$scores)
 allscores.df <- cbind(SO_scores.df, BS_scores.df, PSA_scores.df) |> 
   mutate(SO_c = Sexual_Objectification_Experiences - mean(Sexual_Objectification_Experiences),
          BS_c = Benevolent_Sexism - mean(Benevolent_Sexism),
-         SA_c = Safety_Anxiety - mean(Safety_Anxiety))  # Centred AFTER dropping missing cases
+         SA_c = Safety_Anxiety - mean(Safety_Anxiety))
 ```
 Lucid account of data source, sample, variables, preparation, models, comparisons, diagnostics, and rationale for major decisions; sufficient detail without a code walkthrough
 
 Explain how data was originally cleaned
+
+| Variable    | Description                                                    |
+|-------------|----------------------------------------------------------------|
+| `SO`        | **Predictor:** Frequency of sexual objectification experiences |
+| `BS`        | **Moderator:** Benevolent sexism attitudes/endorsement         |
+| `PSA`       | **Outcome:** Personal safety anxiety and vigilance             |
+
+
+
+| Model | Formula | Research rationale |
+|:-----------------------|:-----------------------|:-----------------------|
+| Null | `PSA ~ 1` | Baseline model |
+| Predictor-Only | `PSA ~ SO` | Frequency of sexual objectification experiences predicts safety anxiety |
+| Interaction | `PSA ~ SO + BS + SO * BS` | Interaction explains additional variation |
+
 
 ## Results
 
@@ -106,12 +145,8 @@ Rel_Distribution <- ggplot(demographics.df, aes(x = Religiosity)) +
     color = "white",
     alpha = 0.8,
     na.rm = TRUE) +
-  geom_density(
-    aes(y = after_stat(count)),
-    linewidth = 0.9,
-    color = "#9A3038") +
   labs(x = "Degree of Religiosity",
-       y = "Density") +
+       y = "Number of Participants") +
   theme_minimal(base_size = 12) +
   theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
@@ -124,12 +159,8 @@ PO_Distribution <- ggplot(demographics.df, aes(x = Political.Orientation)) +
     color = "white",
     alpha = 0.8,
     na.rm = TRUE) +
-  geom_density(
-    aes(y = after_stat(count)),
-    linewidth = 0.9,
-    color = "#9A3038") +
   labs(x = "Political Orientation (Higher = Right-Leaning)",
-       y = "Density") +
+       y = "Number of Participants") +
   theme_minimal(base_size = 12) +
   theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
@@ -138,16 +169,12 @@ PO_Distribution <- ggplot(demographics.df, aes(x = Political.Orientation)) +
 Age_Distribution <- ggplot(demographics.df, aes(x = Age)) +
   geom_histogram(
     fill = "#669BBC",
-    bins = 20,
+    bins = 25,
     color = "white",
     alpha = 0.8,
     na.rm = TRUE) +
-  geom_density(
-    aes(y = after_stat(count)),
-    linewidth = 0.9,
-    color = "#9A3038") +
   labs(x = "Age",
-       y = "Density") +
+       y = "Number of Participants") +
   theme_minimal(base_size = 12) +
   theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
@@ -165,7 +192,7 @@ LGBTQ2S_Distribution <- ggplot(demographics.df, aes(x = `LGBTQ2S+.Identity`)) +
     labels = c("LGBTQ2S+ Identity",
                "Cisgender + Straight")) +
   labs(x = "LGBTQ2S+ Identity",
-       y = "Density") +
+       y = "Number of Participants") +
   theme_minimal(base_size = 12) +
   theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
@@ -458,7 +485,7 @@ comparison_table <- comparison_table |>
          Model.adj.r.squared,
          RMSE,
          "Residual DF",
-         Model.df,
+         "Change in Df",
          "Nested F",
          "Nested p",
          Model.AIC)
@@ -473,7 +500,7 @@ comparison_table |>
     Delta.R2,
     "Nested F"),
     decimals = 2) |>
-  sub_missing(columns = c(Delta.R2, Model.df, "Nested F", "Nested p"),
+  sub_missing(columns = c(Delta.R2, "Change in Df", "Nested F", "Nested p"),
               missing_text = "—") |> 
   cols_label(Model.Model = "Model",
              Model.r.squared = "R²",
@@ -481,33 +508,39 @@ comparison_table |>
              RMSE = "RMSE",
              Delta.R2 = "ΔR²",
              "Residual DF" = "Residual df",
-             Model.df = "Nested df") |> 
+             "Change in Df" = "Nested df",
+             Model.AIC = "AIC") |> 
   cols_move(columns = Delta.R2,
             after = "Residual DF") |> 
+  cols_move(columns = `Nested F`,
+            after = Delta.R2) |> 
   tab_header(title = "Nested Model Comparisons")
 
 # Evaluate Regression Diagnostics
 #plot(mod3) plots suggest that observations 11, 20, 33, 83, and 209 may bias the regression analysis
+```
 
-plot(check_model(mod3)) +
-  plot_annotation(title = "Diagnostic Plots for Model 3")
+#### Diagnostic Plots for Model 3
+```{r}
+#| fig-height: 8
+#| fig-width: 8
+check_model(mod3)
 
 ## Plots suggest no influential observations, but slight curvature at tail ends of normality of residuals plot and at left tail of homogeneity of variance plot
-# Although observations 11, 33, and 309 were flagged in the earlier diagnostic plot, all observations sit within the contour lines here
+# Although observations 11, 33, 48, 83, and 193 were flagged in the earlier diagnostic plot, all observations sit within the contour lines here
 ```
 
 ```{r}
-#| echo: true
 #| output: false
 check_collinearity(mod3) # Low correlation --> Multicollinearity not a concern
 
 # Modelling standardized residuals to see what proportion have sample/theoretical quantiles +/- 2SDs
 std_res <- rstandard(mod3)
 
-percent_above_2_quantiles <- mean(abs(std_res) > 2) * 100 # 4.9% --> Within normal, so residual normality is not a concern here
+percent_above_2_quantiles <- mean(abs(std_res) > 2) * 100 # 5.3% --> Within normal, so residual normality is not a concern here
 ```
 #### Model 3 with HC3 Estimator
-HC3 is a heteroscedasticity-consistent standard error estimator for linear regression that adjusts squared OLS residuals by leverage to keep hypothesis tests accurate when error variance is unequal. In essence, it will make more accurate predictions about variance by widening standard error estimates
+HC3 is a heteroscedasticity-consistent standard error estimator for linear regression that adjusts squared OLS residuals by leverage to keep hypothesis tests as accurate as possible when error variance is unequal. In essence, it will make more accurate predictions about variance by widening standard error estimates.
 
 ```{r}
 # Reporting regression results for original model with HC3 SE estimate
@@ -623,7 +656,7 @@ HC3_plot
 ```{r}
 # Sensitivity model without observations that were flagged by diagnostic tests
 mod3_sensitivity <- lm(SA_c ~ SO_c * BS_c,
-  data = allscores.df[-c(11, 20, 33, 83, 193, 209, 225), ])
+  data = allscores.df[-c(11, 33, 48, 83, 193), ])
 
 # Reporting regression results for *sensitivity* model with HC3 SE estimate
 sensitivity_coefficient_results <- tidy(coeftest(mod3_sensitivity, vcov = vcovHC(mod3_sensitivity, type = "HC3")),
@@ -699,22 +732,13 @@ Sensitivity_predictions <- ggpredict(mod3_sensitivity,
                              vcov.fun = sandwich::vcovHC,
                              vcov.type = "HC3")
 
-# Calculating means with observations removed
-sensitivity_scores <- allscores.df[-c(11, 20, 33, 83, 193, 209, 225), ] |> 
-  select(Sexual_Objectification_Experiences, Benevolent_Sexism, Safety_Anxiety) |> 
-  describe()
-
-sensitivity_m_SO <- round(sensitivity_scores$mean[1], 2)
-sensitivity_m_BS <- round(sensitivity_scores$mean[2], 2) 
-sensitivity_m_PSA <- round(sensitivity_scores$mean[3], 2)
-
 # Un-centering the mean to make scale values more interpretable
 Sensitivity_predictions_df <- as.data.frame(Sensitivity_predictions) |> 
-  mutate(SO_original = x + sensitivity_m_SO,
-         BS_original = as.numeric(as.character(group)) + sensitivity_m_BS,
-         predicted_original = predicted + sensitivity_m_PSA,
-         conf.low_original = conf.low + sensitivity_m_PSA,
-         conf.high_original = conf.high + sensitivity_m_PSA)
+  mutate(SO_original = x + m_SO,
+         BS_original = as.numeric(as.character(group)) + m_BS,
+         predicted_original = predicted + m_PSA,
+         conf.low_original = conf.low + m_PSA,
+         conf.high_original = conf.high + m_PSA)
 
 # Creating plot
 Sensitivity_plot <- ggplot(Sensitivity_predictions_df,

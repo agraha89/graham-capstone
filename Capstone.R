@@ -10,6 +10,7 @@ library(lmtest)
 library(emmeans)
 library(ggeffects)
 library(sandwich)
+library(naniar)
 
 # Loading dataset
 my_data <- read.xlsx("https://raw.githubusercontent.com/agraha89/graham-capstone/main/Dataset.xlsx", sheet = 1)
@@ -17,6 +18,12 @@ my_data <- read.xlsx("https://raw.githubusercontent.com/agraha89/graham-capstone
 # Examining content and structure of dataset
 head(my_data)
 str(my_data)
+mcar_test(my_data)
+
+# Investigating percentage missing for each item --> Low missingness and non-significant MCAR test help justify item-level mean imputation for scale scoring
+colMeans(is.na(my_data[, c(paste0("SO", 1:11),
+                             paste0("BS", 1:6),
+                             paste0("PSA", 1:8))])) * 100
 
 #### Scoring Scales ####
 moderation_analysis.df <- my_data
@@ -57,10 +64,9 @@ SO_scores.df <- as.data.frame(SO_scores$scores)
 BS_scores.df <- as.data.frame(BS_scores$scores)
 PSA_scores.df <- as.data.frame(PSA_scores$scores)
 allscores.df <- cbind(SO_scores.df, BS_scores.df, PSA_scores.df) |> 
-  drop_na(Sexual_Objectification_Experiences, Benevolent_Sexism, Safety_Anxiety) |>
   mutate(SO_c = Sexual_Objectification_Experiences - mean(Sexual_Objectification_Experiences),
          BS_c = Benevolent_Sexism - mean(Benevolent_Sexism),
-         SA_c = Safety_Anxiety - mean(Safety_Anxiety))  # Centre AFTER dropping missing cases
+         SA_c = Safety_Anxiety - mean(Safety_Anxiety))
 
 # Examining distributions of continuous measures
 SO_Distribution <- ggplot(allscores.df, aes(x = Sexual_Objectification_Experiences)) +
@@ -126,9 +132,6 @@ Rel_Distribution <- ggplot(demographics.df, aes(x = Religiosity)) +
     fill = "#669BBC",
     color = "white",
     alpha = 0.8) +
-  geom_density(
-    linewidth = 0.9,
-    color = "#9A3038") +
   labs(x = "Degree of Religiosity",
        y = "Density") +
   theme_minimal(base_size = 12) +
@@ -143,9 +146,6 @@ PO_Distribution <- ggplot(demographics.df, aes(x = Political.Orientation)) +
     fill = "#669BBC",
     color = "white",
     alpha = 0.8) +
-  geom_density(
-    linewidth = 0.9,
-    color = "#9A3038") +
   labs(x = "Degree of Religiosity",
        y = "Density") +
   theme_minimal(base_size = 12) +
@@ -155,13 +155,11 @@ PO_Distribution <- ggplot(demographics.df, aes(x = Political.Orientation)) +
 
 Age_Distribution <- ggplot(demographics.df, aes(x = Age)) +
   geom_histogram(
-    aes(y = after_stat(density)),
+    aes(y = after_stat(count)),
+    bins = 25,
     fill = "#669BBC",
     color = "white",
     alpha = 0.8) +
-  geom_density(
-    linewidth = 0.9,
-    color = "#9A3038") +
   labs(x = "Age",
        y = "Density") +
   theme_minimal(base_size = 12) +
@@ -185,9 +183,6 @@ LGBTQ2S_Distribution <- ggplot(demographics.df, aes(x = `LGBTQ2S+.Identity`)) +
   theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
         axis.line = element_line(color = "black", linewidth = 0.5))
-
-# Combining demographics with scores (for those interested in only the composite scale scores alongside the demographics)
-demographics_and_scores.df <- cbind(allscores.df, demographics.df)
 
 N <- nrow(allscores.df) # Creating an object to capture sample size
 
@@ -230,7 +225,7 @@ m_PO <- round(Demographics_Summary$mean[2], 2)
 sd_PO <- round(Demographics_Summary$sd[2], 2)
 m_Age <- round(Demographics_Summary$mean[3], 2)
 sd_Age <- round(Demographics_Summary$sd[3], 2)
-LGBTQ2S_Num <- sum(demographics.df$`LGBTQ2S+ Identity` == 1)
+LGBTQ2S_Num <- sum(demographics.df$`LGBTQ2S+.Identity` == 1)
 LGBTQ2S_Proportion <- round(LGBTQ2S_Num / N * 100, 2)
 
 # Scale Descriptive Stats
@@ -316,7 +311,7 @@ SO_by_PSA_plot <- ggplot(allscores.df, aes(x = Sexual_Objectification_Experience
   annotate("label",
            x = 4,
            y = 2,
-           label = "r(283) = .26, p < .001")
+           label = "r(283) = .22, p < .001")
 
 BS_by_PSA_plot <- ggplot(allscores.df, aes(x = Benevolent_Sexism, y = Safety_Anxiety)) +
   geom_point(alpha = 0.75) +
@@ -333,7 +328,7 @@ BS_by_PSA_plot <- ggplot(allscores.df, aes(x = Benevolent_Sexism, y = Safety_Anx
   annotate("label",
            x = 4,
            y = 2,
-           label = "r(283) = .06, p = .302")
+           label = "r(283) = .03, p = .566")
 
 ## Intercept-only Model
 mod0 <- lm(SA_c ~ 1, data = allscores.df)
@@ -393,7 +388,7 @@ comparison_table <- cbind(
   Model = glances,
   nested.f.tests)
 
-# Selecting relevants statistics for table
+# Selecting relevant statistics for table
 comparison_table <- comparison_table |>
   mutate(Delta.R2 = Model.r.squared - lag(Model.r.squared),
          RMSE = c(sqrt(mean(residuals(mod0)^2)),
@@ -406,7 +401,7 @@ comparison_table <- comparison_table |>
          Model.adj.r.squared,
          RMSE,
          "Residual DF",
-         Model.df,
+         "Change in Df",
          "Nested F",
          "Nested p",
          Model.AIC)
@@ -421,17 +416,19 @@ comparison_table |>
     Delta.R2,
     "Nested F"),
     decimals = 2) |>
-  sub_missing(columns = c(Delta.R2, Model.df, "Nested F", "Nested p"),
+  sub_missing(columns = c(Delta.R2, "Change in Df", "Nested F", "Nested p"),
               missing_text = "—") |> 
   cols_label(Model.Model = "Model",
              Model.r.squared = "R²",
              Model.adj.r.squared = "Adjusted R²",
              RMSE = "RMSE",
              Delta.R2 = "ΔR²",
-             "Residual DF" = "Residual df",
-             Model.df = "Nested df") |> 
+             "Change in Df" = "Nested df",
+             Model.AIC = "AIC") |> 
   cols_move(columns = Delta.R2,
-            after = "Residual DF")
+            after = "Residual DF") |> 
+  cols_move(columns = `Nested F`,
+            after = Delta.R2)
 
 ## Additional Performance Comparison
 performance_comparison <- compare_performance(
@@ -460,16 +457,16 @@ selected_model <- switch(
   "M3: + Interaction" = mod3)
 
 # Evaluate Regression Diagnostics
-plot(mod3) # Plots suggest that observations 11, 20, 33, 83, and 209 may bias the regression analysis
+plot(mod3) # Plots suggest that observations 11, 33, 48, 83, and 193 may bias the regression analysis
 
 check_model(mod3) ## Plots suggest no influential observations, but slight curvature at tail ends of normality of residuals plot and at left tail of homogeneity of variance plot
-# Although observations 11, 33, and 309 were flagged in the earlier diagnostic plot, all observations sit within the contour lines here
+# Although observations 11, 33, 48, 83, and 193 were flagged in the earlier diagnostic plot, all observations sit within the contour lines here
 check_collinearity(mod3) # Low correlation --> Multicollinearity not a concern
 
 # Modelling standardized residuals to see what proportion have sample/theoretical quantiles +/- 2SDs
 std_res <- rstandard(mod3)
 
-percent_above_2_quantiles <- mean(abs(std_res) > 2) * 100 # 4.9% --> Within normal, so residual normality is not a concern here
+percent_above_2_quantiles <- mean(abs(std_res) > 2) * 100 # 5.3% --> Typical %, so residual normality is not a concern here
 
 # HC3 model is a heteroscedasticity-consistent standard error estimator for linear regression that adjusts squared OLS residuals by leverage to keep hypothesis tests accurate when error variance is unequal
 # In essence, it will make more accurate predictions about variance by widening standard error estimates
@@ -477,7 +474,7 @@ HC3_model <- coeftest(mod3, vcov. = vcovHC(mod3, type = "HC3"))
 
 # Sensitivity model without observations that were flagged by diagnostic tests
 mod3_sensitivity <- lm(SA_c ~ SO_c * BS_c,
-  data = allscores.df[-c(11, 20, 33, 83, 193, 209, 225), ])
+  data = allscores.df[-c(11, 33, 48, 83, 193), ])
 
 HC3_model <- coeftest(mod3_sensitivity,
   vcov. = vcovHC(mod3_sensitivity, type = "HC3"))
@@ -675,22 +672,13 @@ Sensitivity_predictions <- ggpredict(mod3_sensitivity,
                              vcov.fun = sandwich::vcovHC,
                              vcov.type = "HC3")
 
-# Calculating means with observations removed
-sensitivity_scores <- allscores.df[-c(11, 20, 33, 83, 193, 209, 225), ] |> 
-  select(Sexual_Objectification_Experiences, Benevolent_Sexism, Safety_Anxiety) |> 
-  describe()
-
-sensitivity_m_SO <- round(sensitivity_scores$mean[1], 2)
-sensitivity_m_BS <- round(sensitivity_scores$mean[2], 2) 
-sensitivity_m_PSA <- round(sensitivity_scores$mean[3], 2)
-
 # Un-centering the mean to make scale values more interpretable
 Sensitivity_predictions_df <- as.data.frame(Sensitivity_predictions) |> 
-  mutate(SO_original = x + sensitivity_m_SO,
-         BS_original = as.numeric(as.character(group)) + sensitivity_m_BS,
-         predicted_original = predicted + sensitivity_m_PSA,
-         conf.low_original = conf.low + sensitivity_m_PSA,
-         conf.high_original = conf.high + sensitivity_m_PSA)
+  mutate(SO_original = x + m_SO,
+         BS_original = as.numeric(as.character(group)) + m_BS,
+         predicted_original = predicted + m_PSA,
+         conf.low_original = conf.low + m_PSA,
+         conf.high_original = conf.high + m_PSA)
 
 # Creating plot
 Sensitivity_plot <- ggplot(Sensitivity_predictions_df,
