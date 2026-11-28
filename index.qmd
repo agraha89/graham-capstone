@@ -345,10 +345,11 @@ A series of nested linear regression models was estimated to examine the associa
 | Model | Formula | Research rationale |
 |:-----------------------|:-----------------------|:-----------------------|
 | Null | `PSA ~ 1` | Baseline model |
-| Predictor-Only | `PSA ~ SO` | Frequency of sexual objectification experiences predicts safety anxiety |
+| One-Predictor | `PSA ~ SO` | Frequency of sexual objectification experiences predicts safety anxiety |
+| Two-Predictor | `PSA ~ SO + BS` | Benevolent sexism explains additional variation |
 | Interaction | `PSA ~ SO + BS + SO * BS` | Interaction explains additional variation |
 
-As outlined in the table above, a series of nested regression models was estimated to determine whether sexual objectification frequency and benevolent sexism explained meaningful variance in personal safety anxiety and whether their interaction improved model performance. The first model was an intercept-only model, providing a baseline against which subsequent improvements in model fit could be evaluated. The second model included sexual objectification frequency as the sole predictor of personal safety anxiety. The third model added benevolent sexism to determine whether it explained additional variance beyond sexual objectification frequency. Finally, the fourth model included the interaction between sexual objectification frequency and benevolent sexism to evaluate the proposed moderation effect.
+As outlined in the table above, a series of nested regression models was estimated to determine whether sexual objectification frequency and benevolent sexism explained meaningful variance in personal safety anxiety and whether their interaction improved model performance. The first model was an intercept-only model, providing a baseline against which subsequent improvements in model fit could be evaluated. The second model included sexual objectification frequency as the sole predictor of personal safety anxiety. The third model added benevolent sexism to determine whether it explained additional variance beyond sexual objectification frequency. Finally, the third model included the interaction between sexual objectification frequency and benevolent sexism to evaluate the proposed moderation effect.
 
 Model comparisons were conducted using nested-model F-tests and evaluating changes in explained variance (ΔR²), adjusted R², and RMSE. These statistics provided complementary information regarding whether additional predictors meaningfully improved performance relative to the increased complexity of each model. AIC was also examined as a supplementary indicator of relative model fit.
 
