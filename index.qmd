@@ -1,6 +1,6 @@
 ---
-title: "The Protection Paradox" 
-subtitle: "Examining the Moderating Role of Benevolent Sexism in the Association Between Sexual Objectification Experiences and Safety Anxiety"
+title: "Sexual Objectification Experiences and Personal Safety Anxiety" 
+subtitle: "Examining the Moderating Role of Benevolent Sexism"
 author: "Alana Graham"
 format:
   html:
@@ -35,13 +35,14 @@ The present study examined the association between the frequency of women’s se
 Two main hypotheses guided the analysis:
 
 - Hypothesis 1: More frequent experiences of sexual objectification will be positively associated with women’s personal safety anxiety.
-- Hypothesis 2: Benevolent sexism will moderate the association between experiences of sexual objectification and personal safety anxiety, such that the positive association will be stronger among women reporting higher levels of benevolent sexism.
+- Hypothesis 2: Benevolent sexism will moderate the association between experiences of sexual objectification and personal safety anxiety, such that the positive association will be weaker among women reporting higher levels of benevolent sexism.
 
 ## Methods
 ```{r}
 #| output: false
 library(tidyverse)
 library(naniar)
+library(car)
 library(gt)
 library(openxlsx)
 library(dplyr)
@@ -74,7 +75,7 @@ v_keys <- list(
   Benevolent_Sexism = c("BS1", "BS2", "BS3", "BS4", "BS5", "BS6"),
   Safety_Anxiety = c("PSA1", "PSA2", "PSA3", "PSA4", "PSA5", "PSA6", "PSA7", "PSA8")) 
 
-# Scoring Sexual Objectification Experiences Scale
+# Scoring Sexual Objectification Frequency Scale
 SO_scores <- scoreItems(
   v_keys["Sexual_Objectification_Experiences"],
   moderation_analysis.df,
@@ -328,15 +329,35 @@ The current project used an existing clean, anonymized dataset containing partic
 
 Data were originally collected from 358 undergraduate women using Western University’s Psychology research participation pool (SONA). After excluding duplicates and poor-response cases (i.e., straight-lining, failed attention checks, incomplete responses, low reCAPTCHA score), the final sample consisted of `r N` self-identified women (*M*~age~ = `r m_Age`, *SD* = `r sd_Age`). On average, participants reported low levels of religiosity (*M* = `r m_Rel`, *SD* = `r sd_Rel`) and identified as politically left-leaning to centrist (*M* = `r m_PO`, *SD* = `r sd_PO`). `r LGBTQ2S_Proportion`% identified as members of the LGBTQ2S+ community.
 
-#### Measures
+#### Measures, Data Preparation, and Missing Data Handling
 
-As presented in the table below, the main variables of interest were women's frequency of experiencing sexual objectification (SO; predictor), benevolent sexist attitudes (BS; moderator), and personal safety anxiety and vigilance (PSA; outcome). Whereas the measures of benevolent sexism (α = `r round(BS_scores$alpha, 2)`; Glick & Whitehead, 2010) and personal safety anxiety (α = `r round(PSA_scores$alpha, 2)`; Calogero et al., 2021) were taken directly from validated scales, the measure of sexual objectification frequency (α = `r round(SO_scores$alpha, 2)`) was created by compiling 11 relevant items from three relevant validated scales (Cary et al., 2024; Kozee et al., 2007; Swim et al., 1998). Items were averaged to compute composite scale scores, reverse-coding where applicable. Higher scores on each of the scales indicating more frequent sexual objectification experiences, higher benevolent sexism attitudes, and higher personal safety anxiety and vigilance, respectively. Low item missingness (largest value = `r round(Item_Missingness_Value, 2)`%) and a non-significant MCAR test (χ²(`r round(mcar$df, 2)`) = `r round(mcar$statistic, 2)`, *p* = `r round(mcar$p.value, 3)`) endorsed the use of item-level mean imputation. Details of the key variables' items and scoring are available in the provided `README.md` file hosted in this project's GitHub repository. 
+As presented in the table below, the main variables of interest were women's frequency of experiencing sexual objectification (SO; predictor), benevolent sexist attitudes (BS; moderator), and personal safety anxiety and vigilance (PSA; outcome). Whereas the measures of benevolent sexism (α = `r round(BS_scores$alpha, 2)`; Glick & Whitehead, 2010) and personal safety anxiety (α = `r round(PSA_scores$alpha, 2)`; Calogero et al., 2021) were taken directly from validated scales, the measure of sexual objectification frequency (α = `r round(SO_scores$alpha, 2)`) was created by compiling 11 relevant items from three relevant validated scales (Cary et al., 2024; Kozee et al., 2007; Swim et al., 1998). Items were averaged to compute composite scale scores, reverse-coding where applicable. Higher scores indicated more frequent sexual objectification experiences, higher benevolent sexism attitudes, and higher personal safety anxiety and vigilance, respectively. Given low item missingness (largest value = `r round(Item_Missingness_Value, 2)`%) and a non-significant MCAR test (χ²(`r round(mcar$df, 2)`) = `r round(mcar$statistic, 2)`, *p* = `r round(mcar$p.value, 3)`), item-level mean imputation was used to retain the available participant responses while minimizing the loss of observations. Details of the key variables' items and scoring are available in the provided `README.md` file hosted in this project's GitHub repository. 
 
 | Variable    | Description                                                    |
 |-------------|----------------------------------------------------------------|
 | `SO`        | **Predictor:** Frequency of sexual objectification experiences |
 | `BS`        | **Moderator:** Benevolent sexism attitudes/endorsement         |
 | `PSA`       | **Outcome:** Personal safety anxiety and vigilance             |
+
+#### Analytic Strategy
+A series of nested linear regression models was estimated to examine the association between sexual objectification frequency and personal safety anxiety, and assess whether benevolent sexism moderated this relationship. Mean-centred versions of the scale scores were computed and used for these models. Linear regression was selected because the outcome variable was a continuous composite score and the primary objective was to examine the associations between continuous predictors and personal safety anxiety. Note that some researchers may argue that an ordinal model is better suited to the data, as the variables were measured using Likert scales. Linear models are used here because the composite scores behave as quasi-continuous and because interaction effects are simpler to specify and interpret. Additional analyses beyond the scope of the current project may find value in comparing the results of linear and ordinal regression models. 
+
+| Model | Formula | Research rationale |
+|:-----------------------|:-----------------------|:-----------------------|
+| Null | `PSA ~ 1` | Baseline model |
+| Predictor-Only | `PSA ~ SO` | Frequency of sexual objectification experiences predicts safety anxiety |
+| Interaction | `PSA ~ SO + BS + SO * BS` | Interaction explains additional variation |
+
+As outlined in the table above, a series of nested regression models was estimated to determine whether sexual objectification frequency and benevolent sexism explained meaningful variance in personal safety anxiety and whether their interaction improved model performance. The first model was an intercept-only model, providing a baseline against which subsequent improvements in model fit could be evaluated. The second model included sexual objectification frequency as the sole predictor of personal safety anxiety. The third model added benevolent sexism to determine whether it explained additional variance beyond sexual objectification frequency. Finally, the fourth model included the interaction between sexual objectification frequency and benevolent sexism to evaluate the proposed moderation effect.
+
+Model comparisons were conducted using nested-model F-tests and evaluating changes in explained variance (ΔR²), adjusted R², and RMSE. These statistics provided complementary information regarding whether additional predictors meaningfully improved performance relative to the increased complexity of each model. AIC was also examined as a supplementary indicator of relative model fit.
+
+Regression diagnostics were examined to evaluate the assumptions underlying linear regression analyses. These included assessments of linearity, residual normality, homogeneity of variance, multicollinearity, and influential observations.
+
+Finally, simple slopes were estimated to examine the association between sexual objectification frequency and personal safety anxiety at low, average, and high levels of benevolent sexism (−1 SD, the mean, and +1 SD, respectively). These analyses were used to facilitate interpretation of the interaction model and assess whether the association between sexual objectification frequency and personal safety anxiety differed across levels of benevolent sexism. A sensitivity analysis (see Appendix) was also conducted after excluding observations flagged during preliminary diagnostic assessments to evaluate the stability of the primary regression findings.
+
+## Results
+#### Descriptive Statistics
 
 ```{r}
 ## Examining zero-order correlations and scatterplots --> Note that assumption checks are skipped here, as they will be conducted for the main regression tests
@@ -347,11 +368,15 @@ SO_by_PSA <- cor.test(allscores.df$Sexual_Objectification_Experiences, allscores
 BS_by_PSA <- cor.test(allscores.df$Benevolent_Sexism, allscores.df$Safety_Anxiety, method = "pearson")
 ```
 
-After examining the scales' descriptive statistics (below), zero-order Pearson correlations and scatterplots were examined to provide an initial evaluation of the relationships between the key variables. This examination revealed relatively weak associations, with the largest correlation demonstrating a significant and positive association between sexual objectification frequency and personal safety anxiety, *r*(`r SO_by_PSA$parameter`) = `r round(SO_by_PSA$estimate, 2)`, *p* `r ifelse(SO_by_PSA$p.value < .001, "< .001", paste("=", round(SO_by_PSA$p.value, 3)))`.
+<<<<<<< HEAD
+After examining the scales' descriptive statistics (below) for notable patterns and issues of concern, zero-order Pearson correlations and scatterplots were examined to provide an initial evaluation of the relationships between the key variables. This examination revealed suprisingly weak associations, with the largest correlation demonstrating a significant and positive association between sexual objectification frequency and personal safety anxiety, *r*(`r SO_by_PSA$parameter`) = `r round(SO_by_PSA$estimate, 2)`, *p* `r ifelse(SO_by_PSA$p.value < .001, "< .001", paste("=", round(SO_by_PSA$p.value, 3)))`. This noted, the associations (i.e., not the residuals) appear approximately linear, although the weak correlations make it difficult to discern whether any observations are potential outliers.
+=======
+After examining the scales' descriptive statistics (below) for notable patterns and issues of concern, zero-order Pearson correlations and scatterplots were examined to provide an initial evaluation of the relationships between the key variables. This examination revealed surprisingly weak associations, with the largest correlation demonstrating a significant and positive association between sexual objectification frequency and personal safety anxiety, *r*(`r SO_by_PSA$parameter`) = `r round(SO_by_PSA$estimate, 2)`, *p* `r ifelse(SO_by_PSA$p.value < .001, "< .001", paste("=", round(SO_by_PSA$p.value, 3)))`. This noted, the associations (i.e., not the residuals) appear approximately linear, although the weak correlations make it difficult to discern whether any observations are potential outliers.
+>>>>>>> d3e7ad6 (Write-up complete!)
 
 ```{r}
 SO_by_BS_plot <- ggplot(allscores.df, aes(x = Sexual_Objectification_Experiences, y = Benevolent_Sexism)) +
-  geom_point(alpha = 0.75) +
+  geom_jitter(alpha = 0.75) +
   geom_smooth(
     method = "lm",
     se = TRUE,
@@ -368,7 +393,7 @@ SO_by_BS_plot <- ggplot(allscores.df, aes(x = Sexual_Objectification_Experiences
            label = "r(283) = .12, p = .043")
 
 SO_by_PSA_plot <- ggplot(allscores.df, aes(x = Sexual_Objectification_Experiences, y = Safety_Anxiety)) +
-  geom_point(alpha = 0.75) +
+  geom_jitter(alpha = 0.75) +
   geom_smooth(
     method = "lm",
     se = TRUE,
@@ -382,10 +407,10 @@ SO_by_PSA_plot <- ggplot(allscores.df, aes(x = Sexual_Objectification_Experience
   annotate("label",
            x = 3,
            y = 2,
-           label = "r(283) = .26, p < .001")
+           label = "r(283) = .22, p < .001")
 
 BS_by_PSA_plot <- ggplot(allscores.df, aes(x = Benevolent_Sexism, y = Safety_Anxiety)) +
-  geom_point(alpha = 0.75) +
+  geom_jitter(alpha = 0.75) +
   geom_smooth(
     method = "lm",
     se = TRUE,
@@ -413,19 +438,7 @@ Score_Table
                   theme = theme(plot.title = element_text(size = 20)))
 ```
 
-#### Model Specification and Comparison
-
-The next stage of the project focused on model specification and comparison. Mean-centred versions of the scale scores were computed and used for these models. A series of nested linear regression models was estimated to examine the association between sexual objectification frequency and personal safety anxiety, and assess whether benevolent sexism moderated this relationship. Linear regression was selected because the outcome variable was a continuous composite score and the primary objective was to examine the associations between continuous predictors and personal safety anxiety. Note that some researchers may argue that an ordinal model is better suited to the data, as the variables were measured using Likert scales. Linear models are used here because the composite scores behave as quasi-continuous and because interaction effects are simpler to specify and interpret. Additional analyses beyond the scope of the current project may find value in comparing the results of linear and ordinal regression models. 
-
-| Model | Formula | Research rationale |
-|:-----------------------|:-----------------------|:-----------------------|
-| Null | `PSA ~ 1` | Baseline model |
-| Predictor-Only | `PSA ~ SO` | Frequency of sexual objectification experiences predicts safety anxiety |
-| Interaction | `PSA ~ SO + BS + SO * BS` | Interaction explains additional variation |
-
-As outlined the table above, a series of nested regression models was estimated to determine whether sexual objectification frequency and benevolent sexism explained meaningful variance in personal safety anxiety and whether their interaction improved model performance. The first model was an intercept-only model, providing a baseline against which subsequent improvements in model fit could be evaluated. The second model included sexual objectification frequency as the sole predictor of personal safety anxiety. The third model added benevolent sexism to determine whether it explained additional variance beyond sexual objectification frequency. Finally, the fourth model included the interaction between sexual objectification frequency and benevolent sexism to evaluate the proposed moderation effect.
-
-Model comparisons were conducted using nested-model F-tests and evaluating changes in explained variance (ΔR²), adjusted R², and root mean square error (RMSE). These statistics provided complementary information regarding whether additional predictors meaningfully improved performance relative to the increased complexity of each model. Akaike's Information Criterion (AIC) was also examined as a supplementary indicator of relative model fit.
+#### Model Comparison and Selection
 
 ```{r}
 ## Intercept-only Model
@@ -532,22 +545,24 @@ As evidenced in the table above, the model with sexual objectification frequency
 
 Adding benevolent sexism in the subsequent model did not significantly improve model fit, *F*(`r comparison_table[["Change in Df"]][3]`, `r comparison_table[["Residual DF"]][3]`) = `r round(comparison_table[["Nested F"]][3], 2)`, *p* = `r comparison_table[["Nested p"]][3]`. The additional predictor explained negligible variance beyond sexual objectification frequency, with R² remaining unchanged. Furthermore, RMSE also remained unchanged.
 
-Finally, the interaction model was examined to determine whether the association between SO experiences and personal safety anxiety varied according to BS. The addition of the interaction did not significantly improve model performance, *F*(`r comparison_table[["Change in Df"]][4]`, `r comparison_table[["Residual DF"]][4]`) = `r round(comparison_table[["Nested F"]][4], 2)`, *p* = `r comparison_table[["Nested p"]][4]`. The overall model explained `r round(comparison_table$Model.r.squared[4] * 100, 1)`% of the variance in personal safety anxiety. Adjusted R² changed from `r round(comparison_table$Model.adj.r.squared[3], 3)` to `r round(comparison_table$Model.adj.r.squared[4], 3)`, while AIC changed from `r round(comparison_table$Model.AIC[3], 2)` to `r round(comparison_table$Model.AIC[4], 2)`.
+Finally, the interaction model was examined to determine whether the association between sexual objectification frequency and personal safety anxiety varied according to benevolent sexism. The addition of the interaction did not significantly improve model performance, *F*(`r comparison_table[["Change in Df"]][4]`, `r comparison_table[["Residual DF"]][4]`) = `r round(comparison_table[["Nested F"]][4], 2)`, *p* = `r comparison_table[["Nested p"]][4]`. The overall model explained `r round(comparison_table$Model.r.squared[4] * 100, 1)`% of the variance in personal safety anxiety. Adjusted R² did not change and AIC changed negligibly from `r round(comparison_table$Model.AIC[3], 2)` to `r round(comparison_table$Model.AIC[4], 2)`.
 
-Taken together, the model comparisons suggest that sexual objectification frequency provided the primary explanatory contribution, whereas adding benevolent sexism and the interaction term did not meaningfully improve the model's explanatory or predictive performance. Nonetheless, as the moderation analysis remained the primary purpose of this project, diagnostic checks and interaction tests were subsequently undertaken to examine the patterns of effects.
+Taken together, the model comparisons suggest that the single-predictor model provided the most parsimonious model supported by the observed data, whereas adding benevolent sexism and the interaction term did not meaningfully improve the model's explanatory or predictive performance after accounting for model complexity. Nonetheless, as the moderation analysis remained the primary purpose of this project, diagnostic checks and interaction tests were subsequently undertaken to examine the patterns of effects.
 
-#### Diagnostic Checks for Interaction Model
+#### Diagnostic Checks
 
 ```{r}
 #| output: false
 check_collinearity(mod3) # Low correlation --> Multicollinearity not a concern
+
+outlier <- outlierTest(mod3) # No Studentized residuals with Bonferroni p < 0.05
 
 # Modelling standardized residuals to see what proportion have sample/theoretical quantiles +/- 2SDs
 std_res <- rstandard(mod3)
 
 percent_above_2_quantiles <- mean(abs(std_res) > 2) * 100 # 5.3% --> Within normal, so residual normality is not a concern here
 ```
-Diagnostic assessments were conducted for the interaction model to evaluate the appropriateness of the regression estimates and associated statistical tests. As shown below, the diagnostic plots suggested some potential deviations from the assumptions of linear regression, including slight curvature in the tail-ends of the residual normality and homogeneity-of-variance assessments. However, there was no substantial evidence of multicollinearity, and the observations did not appear to exceed the relevant Cook's distance contours.
+Diagnostic assessments were conducted for the interaction model to evaluate the appropriateness of the regression estimates and associated statistical tests. As shown below, the diagnostic plots suggested some potential deviations from the assumptions of linear regression, including slight curvature in the tail-ends of the residual normality and homogeneity-of-variance assessments. However, there was no substantial evidence of multicollinearity, and the observations did not appear to exceed the relevant Cook's distance contours. No significant residual outliers were identified; the largest observation was not statistically significant (r~student~ = `r round(outlier$rstudent[1], 2)`, *p*~Bonferroni~ = `r round(outlier$bonf.p[1], 3)`).
 
 Although several observations were initially flagged during preliminary diagnostic assessments (i.e., `plot(mod3)`), further examination did not indicate that any single observation exerted an excessive influence on the fitted model. Approximately `r round(percent_above_2_quantiles, 1)`% of standardized residuals exceeded ±2, which did not suggest a meaningful departure from expected residual behaviour.
 ```{r}
@@ -559,55 +574,16 @@ check_model(mod3)
 #plot(mod3) plots suggest that observations 11, 33, 48, 83, and 193 may bias the regression analysis
 ## check_model plots suggest no influential observations (i.e., all within contour lines), but slight curvature at tail ends of normality of residuals plot and at left tail of homogeneity of variance plot
 ```
-Given the potential for heteroscedasticity to bias the findings, heteroscedasticity-consistent HC3 robust standard errors were used when evaluating the interaction model. This estimator adjusts standard errors to provide more robust inferences when the assumption of constant residual variance may not be satisfied. As an additional check, a sensitivity model that excluded five observations flagged as potential influential by `plot(mod3)` was conducted. As the findings did not substantively alter the conclusions, the top-line results of this additional analysis are included in the appendix.
+Overall, the diagnostic plots suggest that the interaction model is a relatively reasonable description of the data. Given the potential for heteroscedasticity to bias the findings, however, heteroscedasticity-consistent HC3 robust standard errors were used when evaluating the interaction model. This estimator adjusts standard errors to provide more robust inferences when the assumption of constant residual variance may not be satisfied. As an additional check, a sensitivity model that excluded five observations flagged as potentially influential by `plot(mod3)` was conducted. As the findings did not substantively alter the conclusions, the top-line results of this additional analysis are included in the appendix.
 
-## Results
-
-
-
-Prioritizes important findings, explains estimates and uncertainty in substantive terms, connects results to questions, and calibrates claims and limitations.
-
-#### Model 3 with HC3 Estimator
-HC3 is a heteroscedasticity-consistent standard error estimator for linear regression that adjusts squared OLS residuals by leverage to keep hypothesis tests as accurate as possible when error variance is unequal. In essence, it will make more accurate predictions about variance by widening standard error estimates.
+#### Interaction Model with HC3 Estimator
 
 ```{r}
+#| output: false
 # Reporting regression results for original model with HC3 SE estimate
 coefficient_results <- tidy(coeftest(mod3, vcov = vcovHC(mod3, type = "HC3")),
                                         conf.int = TRUE,
                                         conf.level = 0.95)
-
-coefficient_results |>
-  mutate(term = dplyr::recode(term,
-                              "(Intercept)" = "Intercept",
-                              "SO_c" = "Sexual Objectification Experience Frequency",
-                              "BS_c" = "Benevolent Sexism",
-                              "SO_c:BS_c" = "Sexual Objectification × Benevolent Sexism")) |>
-  select(term,
-         estimate,
-         std.error,
-         conf.low,
-         conf.high,
-         p.value) |>
-  gt() |>
-  cols_label(term = "Predictor",
-             estimate = "Estimate",
-             std.error = "SE",
-             conf.low = "95% CI lower",
-             conf.high = "95% CI upper",
-             p.value = "p") |>
-  fmt_number(columns = c(
-    estimate,
-    std.error,
-    conf.low,
-    conf.high),
-    decimals = 3) |>
-  fmt(columns = p.value,
-      fns = function(x) {
-        ifelse(
-          x < .001,
-          "< .001",
-          sprintf("%.3f", x))}) |> 
-  tab_header(title = "Interaction Model Results with HC3 Estimator")
 
 # Simple slopes: Looking at influence of sexual objectification frequency at specific values of benevolent sexism
 # Pick the probing values: low (-1 SD), average (mean) and high (+1 SD) benevolent sexism
@@ -675,16 +651,104 @@ HC3_plot <- ggplot(predictions_df,
     colour = "Benevolent Sexism",
     fill = "Benevolent Sexism",
     title = "Simple Slopes of Objectification Frequency at Levels of Benevolent Sexism")
+```
 
+Consistent with the zero-order correlation results, the HC3-adjusted regression results indicated that sexual objectification frequency was positively associated with personal safety anxiety (*b* = `r round(coefficient_results$estimate[coefficient_results$term == "SO_c"], 2)`, *SE* = `r round(coefficient_results$std.error[coefficient_results$term == "SO_c"], 2)`, 95% CI \[`r sprintf("%.2f", coefficient_results$conf.low[coefficient_results$term == "SO_c"])`, `r sprintf("%.2f", coefficient_results$conf.high[coefficient_results$term == "SO_c"])`\], *p* `r ifelse(coefficient_results$p.value[coefficient_results$term == "SO_c"] < .001, "< .001", paste0("= ", sprintf("%.3f", coefficient_results$p.value[coefficient_results$term == "SO_c"])))`). This suggests that, at the average level of benevolent sexism, a one-point increase in sexual objectification frequency was associated with an estimated `r sprintf("%.2f", coefficient_results$estimate[coefficient_results$term == "SO_c"])`-point increase in personal safety anxiety.
+
+In contrast, the main effect of benevolent sexism was not statistically significant (*b* = `r round(coefficient_results$estimate[coefficient_results$term == "BS_c"], 2)`, *SE* = `r round(coefficient_results$std.error[coefficient_results$term == "BS_c"], 2)`, 95% CI \[`r sprintf("%.2f", coefficient_results$conf.low[coefficient_results$term == "BS_c"])`, `r sprintf("%.2f", coefficient_results$conf.high[coefficient_results$term == "BS_c"])`\], *p* = `r sprintf("%.3f", coefficient_results$p.value[coefficient_results$term == "BS_c"])`). More importantly, the interaction between sexual objectification frequency and benevolent sexism was also non-significant (*b* = `r round(coefficient_results$estimate[coefficient_results$term == "SO_c:BS_c"], 2)`, *SE* = `r round(coefficient_results$std.error[coefficient_results$term == "SO_c:BS_c"], 2)`, 95% CI \[`r sprintf("%.2f", coefficient_results$conf.low[coefficient_results$term == "SO_c:BS_c"])`, `r sprintf("%.2f", coefficient_results$conf.high[coefficient_results$term == "SO_c:BS_c"])`\], *p* = `r sprintf("%.3f", coefficient_results$p.value[coefficient_results$term == "SO_c:BS_c"])`). Additionally, the positive interaction estimate was directionally opposed with the hypothesized moderating effect. As its confidence interval included zero, however, there remains substantial uncertainty regarding the presence and magnitude of moderation.
+
+```{r}
+coefficient_results |>
+  mutate(term = dplyr::recode(term,
+                              "(Intercept)" = "Intercept",
+                              "SO_c" = "Sexual Objectification Experience Frequency",
+                              "BS_c" = "Benevolent Sexism",
+                              "SO_c:BS_c" = "Sexual Objectification × Benevolent Sexism")) |>
+  select(term,
+         estimate,
+         std.error,
+         conf.low,
+         conf.high,
+         p.value) |>
+  gt() |>
+  cols_label(term = "Predictor",
+             estimate = "Estimate",
+             std.error = "SE",
+             conf.low = "95% CI lower",
+             conf.high = "95% CI upper",
+             p.value = "p") |>
+  fmt_number(columns = c(
+    estimate,
+    std.error,
+    conf.low,
+    conf.high),
+    decimals = 3) |>
+  fmt(columns = p.value,
+      fns = function(x) {
+        ifelse(
+          x < .001,
+          "< .001",
+          sprintf("%.3f", x))}) |> 
+  tab_header(title = "Interaction Model Results with HC3 Estimator")
+```
+Simple slopes were subsequently examined to clarify the conditional associations between sexual objectification frequency and personal safety anxiety at different levels of benevolent sexism. The conditional association was positive and statistically significant at average levels (*b* = `r round(HC3_simple_slopes_df$SO_c.trend[HC3_simple_slopes_df$BS_level == "Mean"], 2)`, *SE* = `r round(HC3_simple_slopes_df$SE[HC3_simple_slopes_df$BS_level == "Mean"], 2)`, 95% CI \[`r sprintf("%.2f", HC3_simple_slopes_df$lower.CL[HC3_simple_slopes_df$BS_level == "Mean"])`, `r sprintf("%.2f", HC3_simple_slopes_df$upper.CL[HC3_simple_slopes_df$BS_level == "Mean"])`\], *p* `r ifelse(HC3_simple_slopes_df$p.value[HC3_simple_slopes_df$BS_level == "Mean"] < .001, "< .001", paste0("= ", sprintf("%.3f", HC3_simple_slopes_df$p.value[HC3_simple_slopes_df$BS_level == "Mean"])))`) and high levels of benevolent sexism (*b* = `r round(HC3_simple_slopes_df$SO_c.trend[HC3_simple_slopes_df$BS_level == "+1 SD"], 2)`, *SE* = `r round(HC3_simple_slopes_df$SE[HC3_simple_slopes_df$BS_level == "+1 SD"], 2)`, 95% CI \[`r sprintf("%.2f", HC3_simple_slopes_df$lower.CL[HC3_simple_slopes_df$BS_level == "+1 SD"])`, `r sprintf("%.2f", HC3_simple_slopes_df$upper.CL[HC3_simple_slopes_df$BS_level == "+1 SD"])`\], *p* `r ifelse(HC3_simple_slopes_df$p.value[HC3_simple_slopes_df$BS_level == "+1 SD"] < .001, "< .001", paste0("= ", sprintf("%.3f", HC3_simple_slopes_df$p.value[HC3_simple_slopes_df$BS_level == "+1 SD"])))`), but not at low levels (*b* = `r round(HC3_simple_slopes_df$SO_c.trend[HC3_simple_slopes_df$BS_level == "-1 SD"], 2)`, *SE* = `r round(HC3_simple_slopes_df$SE[HC3_simple_slopes_df$BS_level == "-1 SD"], 2)`, 95% CI \[`r sprintf("%.2f", HC3_simple_slopes_df$lower.CL[HC3_simple_slopes_df$BS_level == "-1 SD"])`, `r sprintf("%.2f", HC3_simple_slopes_df$upper.CL[HC3_simple_slopes_df$BS_level == "-1 SD"])`\], *p* = `r sprintf("%.3f", HC3_simple_slopes_df$p.value[HC3_simple_slopes_df$BS_level == "-1 SD"])`). 
+
+Although these estimates suggest that the association between sexual objectification frequency and personal safety anxiety was numerically stronger at higher levels of benevolent sexism, the non-significant interaction indicates that the differences between these slopes cannot be confidently distinguished from sampling variability. The wide confidence intervals further emphasize the uncertainty of these estimates. Therefore, the simple slopes trends should not be interpreted as evidence that benevolent sexism significantly moderates the association.
+
+```{r}
 HC3_simple_slopes_table
 
 HC3_plot
 ```
 
-#### Limitations
-Scale psychometrics
+## Discussion
+The present study examined the association between sexual objectification frequency and personal safety anxiety, with particular attention to whether benevolent sexism influenced the strength of this relationship. Overall, the findings provide support for the association between sexual objectification frequency and personal safety anxiety, but did not establish a significant moderating role of benevolent sexism. 
+
+Consistent with the first hypothesis, more frequent experiences of sexual objectification were significantly associated with greater personal safety anxiety. This finding aligns with objectification theory and previous research demonstrating that sexually objectifying experiences can contribute to women's concerns about personal safety and physical vulnerability (Calogero et al., 2021). The observed association suggests that women who experience more frequent objectifying treatment may also experience greater apprehension and vigilance concerning potential threats to their personal safety. Although the proportion of variance explained was relatively modest, the finding reinforces the relevance of examining safety-related concerns as one potential consequence of everyday objectification.
+
+The findings concerning the moderating role of benevolent sexism were less conclusive. Firstly, this variable was not independently associated with personal safety anxiety. These findings suggest that endorsement of benevolent sexist attitudes, at least as measured in the present sample, may not independently account for substantial differences in women's personal safety anxiety once experiences of sexual objectification frequency are considered. Similarly, the hypothesized moderating effect was not statistically supported. Although the interaction coefficient was positive and the simple slopes increased numerically across levels of benevolent sexism, the interaction confidence interval included zero. Consequently, the apparent differences between the simple slopes should be interpreted cautiously: The results do not provide sufficient evidence to conclude that women who endorse stronger benevolent sexist beliefs experience a stronger association between sexual objectification frequency and personal safety anxiety. Nevertheless, the unexpected direction of the (non-significant) moderating effect underscores the need for further research to clarify the mechanisms underlying this relationship and identify potentially relevant covariates.
+
+Importantly, these findings do not necessarily establish that benevolent sexism is irrelevant to women's experiences of personal safety. Rather, they suggest that the specific moderating relationship examined here was not reliably demonstrated. It is possible that benevolent sexism influences other aspects of women's interpretations of gendered experiences, or that its relationship with personal safety anxiety depends on additional contextual or individual factors not considered in the current models. It is also possible that a different analytic model may more accurately describe the relationships between these variables. For instance, a study by Hammond and colleagues (2024) suggested that when women experience greater vulnerability, threat, or reduced personal control, benevolent sexism may become more psychologically appealing to endorse because it offers an ideological framework emphasizing protection, security, and relational dependence. Thus, benevolent sexism may instead be better positioned as a response to safety anxiety, rather than as a moderator.
+
+#### Limitations and Future Directions
+Several limitations should be considered when interpreting these findings. First, the observational nature of the data prevents causal conclusions. Although sexual objectification frequency was positively associated with personal safety anxiety, the analyses cannot establish whether objectifying experiences produce greater safety anxiety or whether other factors contribute to both. Second, the sample was relatively young and university-educated, which may limit the generalizability of the findings to women in other age groups and social contexts. Third, the measure of sexual objectification frequency was created by combining select measures from three distinct validated scales. Although the internal reliability in the current sample was high, thorough examination of the scale's other psychometric properties would provide better confidence in its validity and reliability. Fourth, the models explained a relatively small proportion of the variance in personal safety anxiety, suggesting that additional psychological, interpersonal, and contextual factors should be integrated into a model predicting women's safety-related concerns. Finally, the sample size may have limited statistical power to detect relatively small moderation effects. Interaction effects are often more difficult to detect than main effects, and the confidence interval surrounding the interaction estimate remained relatively wide. In turn, a larger sample size may be better positioned to detect small interaction effects.
+
+Future research could examine additional factors that may influence the relationship between sexual objectification frequency and personal safety anxiety, including previous experiences of harassment or general sexism, perceived environmental safety (e.g., neighbourhood safety statistics), individual differences in threat appraisal and resilience, and various demographic characteristics. A different measure of sexual objectification that captures its impact rather than frequency may be warranted. Re-testing the proposed interaction model in an age-diverse, non-university sample would provide additional valuable context regarding the nature of the results. Further investigation of the psychometric properties of all three scales may also help clarify whether measurement limitations contributed to the nonsignificant moderation findings. Longitudinal research could additionally provide greater insight into the temporal and causal relationships between objectifying experiences, safety-related concerns, and gender-role beliefs.
+
+#### Conclusion
+Overall, the present findings reinforce the importance of considering personal safety anxiety as a psychological correlate of women's experiences of sexual objectification frequency. Although benevolent sexism was theoretically relevant to the proposed relationship, the current analyses did not provide sufficient evidence that it significantly moderates this association. The findings highlight the importance of transparent model comparison and cautious interpretation in psychological research.
 
 ## References
+Becker, J. C., & Wright, S. C. (2011). Yet another dark side of chivalry: Benevolent sexism undermines and hostile sexism motivates collective action for social change. *Journal of Personality and Social Psychology*, *101*(1), 62–77. https://doi.org/10.1037/a0022615
+
+Calogero, R. M., Tylka, T. L., Siegel, J. A., Pina, A., & Roberts, T.-A. (2021). Smile pretty and watch your back: Personal safety anxiety and vigilance in objectification theory. *Journal of Personality and Social Psychology*, *121*(6), 1195–1222. https://doi.org/10.1037/pspi0000344
+
+Cary, K. M., Maas, M. K., & Bowles, R. P. (2024). Development and Validation of the Online Sexual Objectification Experiences Scale Among College Women. *Psychology of Women Quarterly*, *48*(3), 443–459. https://doi.org/10.1177/03616843241250295
+Desmarais, C. (2026). *The emotional toll of everyday sexism: Reactions and resistance* [Unpublished undergraduate honours thesis]. Western University.
+
+Fredrickson, B. L., & Roberts, T.-A. (1997). Objectification theory: Toward understanding women's lived experiences and mental health risks. *Psychology of Women Quarterly*, *21*(2), 173–206. https://doi.org/10.1111/j.1471-6402.1997.tb00108.x
+
+Glick, P., Whitehead, J. (2010). Hostility toward men and the perceived stability of male dominance. *Social Psychology*, *41*(3), 177-185. https://doi.org/10.1027/1864-9335/a000025
+
+Hammond, M. D., Overall, N. C., & Sibley, C. G. (2024). Does powerlessness motivate men and women to endorse sexism? *European Journal of Social Psychology*, *54*, 1354–1363.  https://doi.org/10.1002/ejsp.3092 
+
+Holland, E., Koval, P., Stratemeyer, M., Thomson, F., & Haslam, N. (2017). Sexual objectification in women's daily lives: A smartphone ecological momentary assessment study. *British Journal of Social Psychology*, *56*(2), 314–333. https://doi.org/10.1111/bjso.12152
+
+Hopkins-Doyle, A., Sutton, R. M., Douglas, K. M., & Calogero, R. M. (2019). Flattering to deceive: Why people misunderstand benevolent sexism. *Journal of Personality and Social Psychology*, *116*(2), 167–192. https://doi.org/10.1037/pspa0000135
+
+Kozee, H. B., Tylka, T. L., Augustus-Horvath, C. L., & Denchik, A. (2007). Development and psychometric evaluation of the Interpersonal Sexual Objectification Scale. *Psychology of Women Quarterly*, *31*(2), 176–189. https://doi.org/10.1111/j.1471-6402.2007.00351.x
+
+Moradi, B., & Huang, Y.-P. (2008). Objectification theory and psychology of women: A decade of advances and future directions. *Psychology of Women Quarterly*, *32*(4), 377–398. https://doi.org/10.1111/j.1471-6402.2008.00452.x
+
+Nussbaum, M. C. (1995). Objectification. *Philosophy & Public Affairs*, *24*(4), 249–291. https://doi.org/10.1111/j.1088-4963.1995.tb00032.x
+
+Pecini, C., Guizzo, F., Bonache, H., Borges-Castells, N., Morera, M. D., & Vaes, J. (2023). Sexual objectification: Advancements and avenues for future research. *Current Opinion in Behavioral Sciences*, *50*, 101261. https://doi.org/10.1016/J.COBEHA.2023.101261 
+
+Swim, J. K., Cohen, L. L., & Hyers, L. L. (1998). *Experiencing everyday prejudice and discrimination*. In J. K. Swim & C. Stangor (Eds.), Prejudice: The target's perspective (pp. 37–60). *Academic Press*. https://doi.org/10.1016/B978-012679130-3/50037-5
+
+Szymanski, D. M., Moffitt, L. B., & Carr, E. R. (2011). Sexual objectification of women: Advances to theory and research. *The Counseling Psychologist*, *39*(1), 6–38. https://doi.org/10.1177/0011000010378402
+
+Ward, L. M. (2016). Media and sexualization: State of empirical research, 1995–2015. *The Journal of Sex Research*, *53*(4–5), 560–577. https://doi.org/10.1080/00224499.2016.1142496
 
 ## Appendix: Additional Tables and Figures
 #### Demographic Measure Descriptives
@@ -771,7 +835,7 @@ Sensitivity_simple_slopes_table <- gt(Sensitivity_simple_slopes_df) |>
       fns = \(x) scales::pvalue(x, accuracy = 0.001, add_p = FALSE)) |>
   cols_move(columns = c(lower.CL, upper.CL),
             after = SE) |> 
-  tab_header(title = "Simple Effects of Sexual Objectication Frequency Across Levels of Benevolent Sexism")
+  tab_header(title = "Simple Effects of Sexual Objectification Frequency Across Levels of Benevolent Sexism")
 
 # Generating predicted outcomes to prepare visualization
 Sensitivity_predictions <- ggpredict(mod3_sensitivity,

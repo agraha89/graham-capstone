@@ -11,6 +11,7 @@ library(emmeans)
 library(ggeffects)
 library(sandwich)
 library(naniar)
+library(car)
 
 # Loading dataset
 my_data <- read.xlsx("https://raw.githubusercontent.com/agraha89/graham-capstone/main/Dataset.xlsx", sheet = 1)
@@ -467,6 +468,8 @@ plot(mod3) # Plots suggest that observations 11, 33, 48, 83, and 193 may bias th
 check_model(mod3) ## Plots suggest no influential observations, but slight curvature at tail ends of normality of residuals plot and at left tail of homogeneity of variance plot
 # Although observations 11, 33, 48, 83, and 193 were flagged in the earlier diagnostic plot, all observations sit within the contour lines here
 check_collinearity(mod3) # Low correlation --> Multicollinearity not a concern
+
+outlier <- outlierTest(mod3) # No Studentized residuals with Bonferroni p < 0.05
 
 # Modelling standardized residuals to see what proportion have sample/theoretical quantiles +/- 2SDs
 std_res <- rstandard(mod3)
