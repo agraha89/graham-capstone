@@ -368,11 +368,9 @@ SO_by_PSA <- cor.test(allscores.df$Sexual_Objectification_Experiences, allscores
 BS_by_PSA <- cor.test(allscores.df$Benevolent_Sexism, allscores.df$Safety_Anxiety, method = "pearson")
 ```
 
-<<<<<<< HEAD
 After examining the scales' descriptive statistics (below) for notable patterns and issues of concern, zero-order Pearson correlations and scatterplots were examined to provide an initial evaluation of the relationships between the key variables. This examination revealed suprisingly weak associations, with the largest correlation demonstrating a significant and positive association between sexual objectification frequency and personal safety anxiety, *r*(`r SO_by_PSA$parameter`) = `r round(SO_by_PSA$estimate, 2)`, *p* `r ifelse(SO_by_PSA$p.value < .001, "< .001", paste("=", round(SO_by_PSA$p.value, 3)))`. This noted, the associations (i.e., not the residuals) appear approximately linear, although the weak correlations make it difficult to discern whether any observations are potential outliers.
-=======
+
 After examining the scales' descriptive statistics (below) for notable patterns and issues of concern, zero-order Pearson correlations and scatterplots were examined to provide an initial evaluation of the relationships between the key variables. This examination revealed surprisingly weak associations, with the largest correlation demonstrating a significant and positive association between sexual objectification frequency and personal safety anxiety, *r*(`r SO_by_PSA$parameter`) = `r round(SO_by_PSA$estimate, 2)`, *p* `r ifelse(SO_by_PSA$p.value < .001, "< .001", paste("=", round(SO_by_PSA$p.value, 3)))`. This noted, the associations (i.e., not the residuals) appear approximately linear, although the weak correlations make it difficult to discern whether any observations are potential outliers.
->>>>>>> d3e7ad6 (Write-up complete!)
 
 ```{r}
 SO_by_BS_plot <- ggplot(allscores.df, aes(x = Sexual_Objectification_Experiences, y = Benevolent_Sexism)) +
